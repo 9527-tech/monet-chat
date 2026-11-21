@@ -309,7 +309,7 @@ async function handleApi(req, res, url) {
       clients: clients.size,
       rooms: rooms.size,
       uptime: Math.round(process.uptime()),
-      version: '1.1.0',
+      version: '1.1.1',
     });
     return true;
   }

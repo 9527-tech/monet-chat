@@ -16,7 +16,7 @@ import { PeerManager } from './src/peer.js';
 import { CallManager } from './src/calls.js';
 import {
   WALLPAPERS, STYLE_NAMES, applyScheme, applyWallpaper, effectiveDark,
-  resolveWallpaper, extractSeedFromFile, makeWallpaper, wallpaperById, schemePreview,
+  resolveWallpaper, extractSeedFromFile, makeWallpaper, wallpaperById, schemePreview, seedFromWallpaper,
 } from './src/theme.js';
 import {
   toast, openModal, closeTopModal, confirmDialog, promptDialog, openMenu, closeMenu, showLightbox,
@@ -28,7 +28,7 @@ import {
   renderIncomingCall, previewText,
 } from './src/render.js';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
   schemeStyle: 'tonal',
   contrast: 'standard',
   wallpaper: 'aurora',
+  autoSeed: true,
   sound: true,
   notifications: true,
   enterToSend: true,
@@ -329,10 +330,19 @@ function restoreActiveChat() {
 /* appearance                                                          */
 /* ------------------------------------------------------------------ */
 
+function seedForSettings(settings) {
+  if (!settings) return DEFAULT_SETTINGS.seed;
+  if (settings.autoSeed === false) return settings.seed || DEFAULT_SETTINGS.seed;
+  const wp = resolveWallpaper(settings);
+  if (!wp) return settings.seed || DEFAULT_SETTINGS.seed;
+  if (wp.type === 'image') return wp.seed || settings.seed || DEFAULT_SETTINGS.seed;
+  return seedFromWallpaper(wp) || wp.seed || settings.seed || DEFAULT_SETTINGS.seed;
+}
+
 function applyAppearance(settings = state.settings) {
   if (!settings) return;
   const dark = effectiveDark(settings);
-  applyScheme(settings.seed || DEFAULT_SETTINGS.seed, dark, {
+  applyScheme(seedForSettings(settings), dark, {
     style: settings.schemeStyle || 'tonal',
     contrast: settings.contrast || 'standard',
   });
@@ -2257,6 +2267,7 @@ function settingsHTML(d) {
       <button class="settings-tab active" data-tab="appearance" type="button">外观</button>
       <button class="settings-tab" data-tab="profile" type="button">个人资料</button>
       <button class="settings-tab" data-tab="notify" type="button">通知</button>
+      <button class="settings-tab" data-tab="general" type="button">通用</button>
       <button class="settings-tab" data-tab="network" type="button">网络</button>
       <button class="settings-tab" data-tab="data" type="button">数据</button>
       <button class="settings-tab" data-tab="about" type="button">关于</button>
@@ -2273,8 +2284,9 @@ function settingsHTML(d) {
             <button type="button" class="wallpaper-swatch upload" id="btn-wall-upload"><span class="icon">add_photo_alternate</span><small>上传图片</small></button>
           </div>
           <label class="settings-row compact"><span><b>自定义种子色</b><small>Material You 会从它生成整套配色</small></span>
-            <input id="set-seed" type="color" value="${escapeHTML(d.seed || '#7C6BFF')}" />
+            <input id="set-seed" type="color" value="${escapeHTML(seedForSettings(d))}" />
           </label>
+          <div class="seed-hint" id="seed-hint">${d.autoSeed === false ? '使用自定义种子色' : '自动从壁纸取色'} · <b>${escapeHTML(seedForSettings(d).toUpperCase())}</b></div>
         </div>
         <div class="settings-block">
           <div class="settings-inline">
@@ -2287,10 +2299,6 @@ function settingsHTML(d) {
               ${segHTML('contrast', d.contrast, [['standard', '标准'], ['medium', '中'], ['high', '高']])}
             </div>
           </div>
-        </div>
-        <div class="settings-block">
-          <label class="settings-switch"><span><b>减少动画</b><small>关闭过渡和装饰动效</small></span><input id="set-motion" type="checkbox" ${d.reduceMotion ? 'checked' : ''} /><i></i></label>
-          <label class="settings-switch"><span><b>极简界面</b><small>只保留分享邀请码、聊天与接收文件；高级能力收进会话信息</small></span><input id="set-simple" type="checkbox" ${d.simpleMode !== false ? 'checked' : ''} /><i></i></label>
         </div>
       </section>
       <section class="settings-panel hidden" data-panel="profile">
@@ -2317,6 +2325,15 @@ function settingsHTML(d) {
           <label class="settings-switch"><span><b>桌面通知</b><small>窗口不在前台时提醒</small></span><input id="set-notify" type="checkbox" ${d.notifications ? 'checked' : ''} /><i></i></label>
           <label class="settings-switch"><span><b>已读回执</b><small>让对方看到你已读</small></span><input id="set-receipts" type="checkbox" ${d.showReadReceipts ? 'checked' : ''} /><i></i></label>
           <label class="settings-switch"><span><b>回车发送</b><small>关闭后用 Ctrl / ⌘ + Enter 发送</small></span><input id="set-enter" type="checkbox" ${d.enterToSend ? 'checked' : ''} /><i></i></label>
+        </div>
+      </section>
+      <section class="settings-panel hidden" data-panel="general">
+        <div class="settings-block">
+          <label class="settings-switch"><span><b>减少动画</b><small>关闭过渡和装饰动效，省电也更利落</small></span><input id="set-motion" type="checkbox" ${d.reduceMotion ? 'checked' : ''} /><i></i></label>
+          <label class="settings-switch"><span><b>极简界面</b><small>只保留分享邀请码、聊天与接收文件；高级能力收进会话信息</small></span><input id="set-simple" type="checkbox" ${d.simpleMode !== false ? 'checked' : ''} /><i></i></label>
+        </div>
+        <div class="settings-block">
+          <div class="settings-note">极简界面不会删除任何功能：通话、安全号码、P2P 状态都在「会话信息」里。</div>
         </div>
       </section>
       <section class="settings-panel hidden" data-panel="network">
@@ -2415,17 +2432,31 @@ function openSettings(tab = 'appearance') {
   return close;
 }
 
+function updateSeedHint(layer, seed, auto) {
+  const hint = layer.querySelector('#seed-hint');
+  if (hint) hint.innerHTML = `${auto ? '自动从壁纸取色' : '使用自定义种子色'} · <b>${escapeHTML(String(seed || '').toUpperCase())}</b>`;
+}
+
 function showSettingsTab(layer, tab) {
   layer.querySelectorAll('.settings-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-  layer.querySelectorAll('.settings-panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== tab));
+  layer.querySelectorAll('.settings-panel').forEach((p) => {
+    const active = p.dataset.panel === tab;
+    p.classList.toggle('hidden', !active);
+    if (active) {
+      p.classList.remove('settings-panel-enter');
+      void p.offsetWidth;
+      p.classList.add('settings-panel-enter');
+    }
+  });
 }
 
 function previewDraft() {
   if (!state.settingsDraft) return;
   const d = state.settingsDraft;
-  applyScheme(d.seed || DEFAULT_SETTINGS.seed, effectiveDark(d), { style: d.schemeStyle, contrast: d.contrast });
+  applyScheme(seedForSettings(d), effectiveDark(d), { style: d.schemeStyle, contrast: d.contrast });
   applyWallpaper(d);
   document.documentElement.classList.toggle('reduce-motion', !!d.reduceMotion);
+  syncNativeBars(effectiveDark(d));
 }
 
 async function startRemoteFromSettings(layer) {
@@ -2476,7 +2507,10 @@ async function startRemoteFromSettings(layer) {
 }
 
 function bindSettings(layer, close) {
-  layer.querySelectorAll('.settings-tab').forEach((b) => b.addEventListener('click', () => showSettingsTab(layer, b.dataset.tab)));
+  layer.querySelectorAll('.settings-tab').forEach((b) => b.addEventListener('click', () => {
+    vibrate(4);
+    showSettingsTab(layer, b.dataset.tab);
+  }));
 
   layer.addEventListener('click', async (ev) => {
     const seg = ev.target.closest('.seg-btn');
@@ -2493,11 +2527,14 @@ function bindSettings(layer, close) {
       if (id === 'custom') return;
       const preset = WALLPAPERS.find((w) => w.id === id);
       if (!preset) return;
+      const derived = seedFromWallpaper(preset) || preset.seed;
       state.settingsDraft.wallpaper = id;
-      state.settingsDraft.seed = preset.seed;
+      state.settingsDraft.seed = derived;
+      state.settingsDraft.autoSeed = true;
       layer.querySelectorAll('.wallpaper-swatch').forEach((b) => b.classList.toggle('active', b === wall));
       const seedInput = layer.querySelector('#set-seed');
-      if (seedInput) seedInput.value = preset.seed;
+      if (seedInput) seedInput.value = derived;
+      updateSeedHint(layer, derived, true);
       previewDraft();
       return;
     }
@@ -2508,6 +2545,10 @@ function bindSettings(layer, close) {
         const wall = await makeWallpaper(file);
         state.settingsDraft.wallpaper = wall;
         state.settingsDraft.seed = wall.seed;
+        state.settingsDraft.autoSeed = true;
+        const seedInput = layer.querySelector('#set-seed');
+        if (seedInput) seedInput.value = wall.seed;
+        updateSeedHint(layer, wall.seed, true);
         previewDraft();
         const grid = layer.querySelector('.wallpaper-grid');
         grid?.querySelector('[data-wall="custom"]')?.remove();
@@ -2595,6 +2636,8 @@ function bindSettings(layer, close) {
     const t = ev.target;
     if (t.id === 'set-seed') {
       state.settingsDraft.seed = t.value;
+      state.settingsDraft.autoSeed = false;
+      updateSeedHint(layer, t.value, false);
       previewDraft();
     }
     if (t.id === 'set-name') state.profileDraft.name = t.value;
