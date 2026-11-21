@@ -16,6 +16,32 @@ import {
 } from '../vendor/material.js';
 import { loadImage } from './util.js';
 
+/**
+ * Pull a seed color out of a wallpaper's gradient stops.
+ * Pure CSS gradients cannot be sampled with canvas without parsing the
+ * whole gradient syntax, so we average the vivid color stops and normalise
+ * them through HCT. Dark base stops and near-white highlights are ignored.
+ */
+export function seedFromWallpaper(wallpaper) {
+  if (!wallpaper) return null;
+  if (wallpaper.seed && wallpaper.type === 'image') return wallpaper.seed;
+  const hexes = String(wallpaper.bg || '').match(/#[0-9a-f]{6}\b/gi) || [];
+  const samples = [];
+  for (const hex of hexes) {
+    const hct = Hct.fromInt(argbFromHex(hex));
+    if (hct.tone < 24 || hct.tone > 92 || hct.chroma < 10) continue;
+    samples.push({ hct, r: (argbFromHex(hex) >> 16) & 255, g: (argbFromHex(hex) >> 8) & 255, b: argbFromHex(hex) & 255 });
+  }
+  if (!samples.length) return wallpaper.seed || null;
+  const r = Math.round(samples.reduce((n, c) => n + c.r, 0) / samples.length);
+  const g = Math.round(samples.reduce((n, c) => n + c.g, 0) / samples.length);
+  const b = Math.round(samples.reduce((n, c) => n + c.b, 0) / samples.length);
+  const avg = Hct.fromInt(argbFromHex('#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')));
+  // Keep a lively but not neon seed: preserve hue, lift muted chroma a bit.
+  const chroma = Math.max(avg.chroma, 38);
+  return hexFromArgb(Hct.from(avg.hue, Math.min(chroma, 72), 58).toInt());
+}
+
 export const WALLPAPERS = [
   {
     id: 'aurora',

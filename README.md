@@ -5,8 +5,9 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 > 外面看起来只是「分享一个码，就能聊天」；复杂的东西都收在设置和会话信息里。
 
 - 仓库：<https://github.com/9527-tech/monet-chat>
-- 最新版本：**1.1.0**
-- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.1.0>
+- 最新版本：**1.1.1**
+- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.1.1>
+- 1.1.1：壁纸自动取色（HCT 算法）、头像裁切修复、设置页转场/按压/消息入场动画、状态栏主题同步。
 
 ## 功能
 
@@ -25,12 +26,12 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 
 | 平台 | 文件 |
 | --- | --- |
-| Android | [`MonetChat-1.1.0.apk`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/MonetChat-1.1.0.apk) |
-| Windows 安装版 | [`MonetChat-Setup-1.1.0.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/MonetChat-Setup-1.1.0.exe) |
-| Windows 便携版 | [`MonetChat-Portable-1.1.0.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/MonetChat-Portable-1.1.0.exe) |
-| Linux x64 | [`MonetChat-1.1.0-linux-x64.tar.gz`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/MonetChat-1.1.0-linux-x64.tar.gz) |
-| 源码包 | [`monet-chat-1.1.0-source.zip`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/monet-chat-1.1.0-source.zip) |
-| 完整 Git 历史 | [`monet-chat-1.1.0.bundle`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.0/monet-chat-1.1.0.bundle) |
+| Android | [`MonetChat-1.1.1.apk`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-1.1.1.apk) |
+| Windows 安装版 | [`MonetChat-Setup-1.1.1.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-Setup-1.1.1.exe) |
+| Windows 便携版 | [`MonetChat-Portable-1.1.1.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-Portable-1.1.1.exe) |
+| Linux x64 | [`MonetChat-1.1.1-linux-x64.tar.gz`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-1.1.1-linux-x64.tar.gz) |
+| 源码包 | [`monet-chat-1.1.1-source.zip`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/monet-chat-1.1.1-source.zip) |
+| 完整 Git 历史 | [`monet-chat-1.1.1.bundle`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/monet-chat-1.1.1.bundle) |
 
 校验和见 [`release/SHA256SUMS.txt`](release/SHA256SUMS.txt)。
 
@@ -140,7 +141,7 @@ npm run android:release
 npm run dist:win
 ```
 
-输出：`dist/MonetChat-Setup-1.1.0.exe` 与 `dist/MonetChat-Portable-1.1.0.exe`。
+输出：`dist/MonetChat-Setup-1.1.1.exe` 与 `dist/MonetChat-Portable-1.1.1.exe`。
 
 ### Linux
 
@@ -148,7 +149,7 @@ npm run dist:win
 npm run dist:linux
 ```
 
-输出：`release/MonetChat-1.1.0-linux-x64.tar.gz`。
+输出：`release/MonetChat-1.1.1-linux-x64.tar.gz`。
 
 ### macOS / iOS
 
