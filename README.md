@@ -4,6 +4,8 @@
 
 没有账号，没有中心化消息存储；服务器只负责交换 SDP/ICE 和房间成员，聊天内容不经过服务器。
 
+> 源码仓库：<https://github.com/9527-tech/monet-chat>（仓库已创建；因 GitHub 要求 2FA/密码重新验证，代码尚未推送，本地 `main` 已提交）
+
 ![聊天界面](screenshots/03-chat-A.png)
 
 | 邀请 | 群聊 | 视频通话 | 取色设置 |
