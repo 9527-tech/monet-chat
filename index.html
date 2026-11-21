@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <title>Monet Chat — 点对点，莫奈色</title>
+  <meta name="description" content="Monet Chat 是一个以 P2P 直连和端到端加密为核心的即时聊天应用，全平台可用，支持 Material You 莫奈取色。" />
+  <meta name="theme-color" content="#FEF7FF" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Monet Chat" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="icon" href="assets/favicon-16.png" sizes="16x16" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preload" href="assets/material-symbols-rounded-subset.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="app.css" />
+  <script>
+    /* paint the cached Monet scheme before app.js boots to avoid a flash of the wrong theme */
+    (function () {
+      try {
+        var raw = localStorage.getItem('monet.theme');
+        if (!raw) return;
+        var cache = JSON.parse(raw);
+        var root = document.documentElement;
+        if (cache.dark != null) root.dataset.theme = cache.dark ? 'dark' : 'light';
+        if (cache.vars) {
+          for (var key in cache.vars) root.style.setProperty(key, cache.vars[key]);
+        }
+        if (cache.seed) root.style.setProperty('--seed', cache.seed);
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta && cache.vars && cache.vars['--surface']) themeMeta.content = cache.vars['--surface'];
+        if (cache.wallpaper) {
+          var applyWall = function () {
+            var wall = document.getElementById('wallpaper');
+            if (wall) wall.style.background = cache.wallpaper;
+          };
+          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyWall, { once: true });
+          else applyWall();
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div id="wallpaper" class="wallpaper" aria-hidden="true"></div>
+  <div class="wallpaper-tint" aria-hidden="true"></div>
+
+  <!-- ============================ onboarding ============================ -->
+  <section id="onboarding" class="onboarding hidden" aria-label="开始使用 Monet Chat">
+    <div class="onboarding-blobs" aria-hidden="true">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+    </div>
+    <div class="onboarding-inner">
+      <div class="onboarding-hero">
+        <div class="hero-brand">
+          <img src="assets/icon-192.png" alt="" width="44" height="44" />
+          <span>Monet Chat</span>
+        </div>
+        <span class="eyebrow"><i class="dot"></i> P2P 直连 · 端到端加密 · 无需账号</span>
+        <h1>让聊天，<br /><span class="gradient-text">回到你我之间。</span></h1>
+        <p class="hero-copy">
+          消息不经过任何人的服务器，只在你的设备与朋友的设备之间流动。
+          莫奈取色引擎会从你的壁纸里长出整套界面颜色。
+        </p>
+        <ul class="hero-features">
+          <li><span class="feature-ico">bolt</span><div><strong>真·点对点</strong><small>WebRTC 数据通道直连，服务器只负责牵线</small></div></li>
+          <li><span class="feature-ico">enhanced_encryption</span><div><strong>端到端加密</strong><small>ECDH P-256 密钥协商 + AES-256-GCM</small></div></li>
+          <li><span class="feature-ico">palette</span><div><strong>莫奈取色</strong><small>Material You 动态配色，随壁纸流转</small></div></li>
+        </ul>
+        <div class="hero-platforms">
+          <span>Windows</span><span>macOS</span><span>Linux</span><span>Android</span><span>iOS</span><span>Web</span>
+        </div>
+      </div>
+
+      <div class="onboarding-card">
+        <header>
+          <h2>创建你的身份</h2>
+          <p>身份与密钥只保存在这台设备的本地数据库中。</p>
+        </header>
+        <div class="identity-setup">
+          <button id="ob-avatar" class="avatar-picker" type="button" aria-label="选择头像">
+            <span id="ob-avatar-preview" class="avatar avatar-preview"><span>你</span></span>
+            <span class="avatar-edit-badge icon">photo_camera</span>
+          </button>
+          <div class="identity-fields">
+            <label class="field">
+              <span class="field-label">显示名称</span>
+              <input id="ob-name" class="input" maxlength="24" placeholder="例如：林小满" autocomplete="nickname" />
+            </label>
+            <label class="field">
+              <span class="field-label">一句话介绍 <small>可选</small></span>
+              <input id="ob-bio" class="input" maxlength="60" placeholder="在找一起看日落的人" />
+            </label>
+            <label id="ob-server-wrap" class="field hidden">
+              <span class="field-label">信令服务器 <small>桌面端或自建地址</small></span>
+              <input id="ob-server" class="input" inputmode="url" placeholder="http://192.168.1.20:4173" autocomplete="url" />
+              <span class="field-hint">手机与桌面端需在同一局域网。保持默认即可，连不上时在这里修改。</span>
+            </label>
+          </div>
+        </div>
+        <button id="ob-create" class="btn filled large block">
+          <span class="icon">auto_awesome</span><span>生成身份并开始</span>
+        </button>
+        <div class="onboarding-links">
+          <button id="ob-import" class="btn text small"><span class="icon">upload</span>导入已有身份</button>
+          <button id="ob-help" class="btn text small"><span class="icon">shield</span>了解加密</button>
+        </div>
+        <p class="privacy-note"><span class="icon">lock</span> 不收集手机号、邮箱或通讯录。换设备前请先导出身份备份。</p>
+      </div>
+    </div>
+    <footer class="onboarding-foot">Monet Chat · 开源 PWA · 离线可用</footer>
+  </section>
+
+  <!-- ============================== shell =============================== -->
+  <div id="shell" class="shell hidden">
+    <aside id="sidebar" class="sidebar" aria-label="会话列表">
+      <header class="sidebar-brand">
+        <img src="assets/icon-192.png" alt="" width="34" height="34" />
+        <div class="brand-text">
+          <strong>Monet Chat</strong>
+          <span id="net-chip" class="net-chip offline"><i></i><b>连接中</b></span>
+        </div>
+        <button id="btn-settings" class="icon-btn" aria-label="设置" title="设置">settings</button>
+      </header>
+
+      <div class="sidebar-search">
+        <span class="icon">search</span>
+        <input id="search-input" placeholder="搜索聊天、消息" aria-label="搜索聊天和消息" autocomplete="off" />
+        <kbd class="search-kbd">Ctrl K</kbd>
+      </div>
+
+      <div class="sidebar-actions">
+        <button id="btn-new" class="btn filled grow"><span class="icon">add_comment</span><span>新对话</span></button>
+        <button id="btn-join" class="icon-btn tonal lg" aria-label="通过邀请码加入" title="输入邀请码">qr_code_scanner</button>
+      </div>
+
+      <nav id="chat-filters" class="filters" aria-label="会话筛选">
+        <button class="filter-chip active" data-filter="all">全部</button>
+        <button class="filter-chip" data-filter="dm">朋友</button>
+        <button class="filter-chip" data-filter="group">群聊</button>
+        <button class="filter-chip" data-filter="unread">未读 <span id="unread-total" class="count hidden">0</span></button>
+      </nav>
+
+      <div id="search-results" class="search-results hidden"></div>
+      <div id="chat-list" class="chat-list" role="list"></div>
+
+      <button id="install-banner" class="install-banner hidden" type="button">
+        <span class="icon">install_mobile</span>
+        <span><strong>安装到桌面</strong><small>像原生应用一样使用</small></span>
+        <span class="icon install-arrow">chevron_right</span>
+      </button>
+
+      <footer id="me-card" class="me-card"></footer>
+    </aside>
+
+    <main class="main">
+      <section id="empty-state" class="empty-state" aria-label="欢迎">
+        <div class="empty-glow" aria-hidden="true"></div>
+        <div class="empty-card">
+          <div class="empty-mark">
+            <img src="assets/icon-192.png" alt="" width="74" height="74" />
+          </div>
+          <h2>选择一段对话</h2>
+          <p>或者创建一个邀请码，把朋友拉进只属于你们的直连频道。</p>
+          <div class="empty-actions">
+            <button id="btn-empty-new" class="btn filled"><span class="icon">person_add</span>邀请朋友</button>
+            <button id="btn-empty-group" class="btn tonal"><span class="icon">group_add</span>创建群聊</button>
+          </div>
+          <div class="empty-facts">
+            <div><span class="icon">bolt</span><b>P2P</b><small>消息直连</small></div>
+            <div><span class="icon">enhanced_encryption</span><b>E2EE</b><small>端到端加密</small></div>
+            <div><span class="icon">cloud_off</span><b>0</b><small>服务端留痕</small></div>
+          </div>
+        </div>
+        <div class="empty-tips">
+          <span><kbd>Ctrl</kbd><kbd>K</kbd> 搜索</span>
+          <span><kbd>Ctrl</kbd><kbd>N</kbd> 新对话</span>
+          <span><kbd>Esc</kbd> 关闭面板</span>
+        </div>
+      </section>
+
+      <section id="chat-view" class="chat-view hidden" aria-label="聊天窗口">
+        <header class="chat-header">
+          <button id="btn-back" class="icon-btn back-btn" aria-label="返回会话列表">arrow_back</button>
+          <button id="chat-avatar" class="chat-avatar-btn" aria-label="查看资料"></button>
+          <div class="chat-title-block">
+            <h2 id="chat-title">会话</h2>
+            <p id="chat-subtitle">正在连接…</p>
+          </div>
+          <div class="chat-actions">
+            <button id="btn-call" class="icon-btn" aria-label="语音通话" title="语音通话">call</button>
+            <button id="btn-video" class="icon-btn" aria-label="视频通话" title="视频通话">videocam</button>
+            <button id="btn-chat-search" class="icon-btn" aria-label="在会话中搜索" title="在会话中搜索">search</button>
+            <button id="btn-info" class="icon-btn" aria-label="会话信息" title="会话信息">info</button>
+          </div>
+        </header>
+
+        <div id="pinned-bar" class="pinned-bar hidden"></div>
+
+        <div id="messages" class="messages" role="log" aria-live="polite" aria-label="消息记录"></div>
+
+        <div id="typing-bar" class="typing-bar" aria-live="polite"></div>
+
+        <button id="btn-jump-bottom" class="jump-bottom hidden" aria-label="跳到最新消息">
+          <span class="icon">arrow_downward</span><span id="jump-count" class="jump-count"></span>
+        </button>
+
+        <div id="composer" class="composer">
+          <div id="composer-context" class="composer-context hidden"></div>
+          <div class="composer-box">
+            <button id="btn-attach" class="icon-btn composer-tool" aria-label="添加附件" title="添加附件">add</button>
+            <button id="btn-emoji" class="icon-btn composer-tool" aria-label="表情" title="表情">mood</button>
+            <textarea id="input" class="composer-input" rows="1" placeholder="发消息…" aria-label="消息输入框" enterkeyhint="send"></textarea>
+            <button id="btn-mic" class="icon-btn composer-tool mic-btn" aria-label="按住录音" title="语音消息">mic</button>
+            <button id="btn-send" class="send-btn hidden" aria-label="发送">send</button>
+          </div>
+          <div class="composer-hint"><span id="composer-hint-text">Enter 发送 · Shift + Enter 换行</span><span id="composer-counter"></span></div>
+        </div>
+
+        <div id="drag-overlay" class="drag-overlay hidden" aria-hidden="true">
+          <div><span class="icon">upload_file</span><strong>松手发送文件</strong><small>文件会通过 P2P 加密通道传输</small></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================ info panel ============================ -->
+  <div id="info-scrim" class="info-scrim hidden"></div>
+  <aside id="info-panel" class="info-panel" aria-label="会话信息" aria-hidden="true">
+    <header class="info-head">
+      <h2>会话信息</h2>
+      <button id="info-close" class="icon-btn" aria-label="关闭">close</button>
+    </header>
+    <div id="info-content" class="info-content"></div>
+  </aside>
+
+  <!-- ============================== overlays ============================ -->
+  <div id="call-root" class="call-root hidden"></div>
+  <div id="lightbox-root"></div>
+  <div id="menu-root"></div>
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+  <noscript><div class="noscript">Monet Chat 需要启用 JavaScript 才能运行。</div></noscript>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

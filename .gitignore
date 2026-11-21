@@ -1,0 +1,15 @@
+node_modules/
+toolchain/
+dist/
+www/
+release/
+android/.gradle/
+android/app/build/
+android/keystore.properties
+android/*.jks
+debug.log
+build-check.js
+.DS_Store
+Thumbs.db
+*.local
+screenshots/large-photo.png

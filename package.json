@@ -1,0 +1,117 @@
+{
+  "name": "monet-chat",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "P2P-first, end-to-end encrypted chat with Google Material You dynamic color.",
+  "author": "Monet Chat",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "native:web": "node scripts/build-native.mjs",
+    "native:sync": "npm run native:web && cap sync android",
+    "android:debug": "cd android && gradlew.bat assembleDebug",
+    "android:release": "cd android && gradlew.bat assembleRelease",
+    "electron:start": "electron .",
+    "dist:win": "electron-builder --win nsis portable",
+    "test": "node scripts/e2e.mjs",
+    "test:all": "npm test && npm run test:group && npm run test:calls && npm run test:ui && npm run test:extra && npm run test:offline && npm run test:pwa && npm run test:tablet",
+    "test:group": "node scripts/e2e-group.mjs",
+    "test:calls": "node scripts/e2e-call.mjs",
+    "test:ui": "node scripts/e2e-ui.mjs",
+    "test:extra": "node scripts/e2e-extra.mjs",
+    "test:offline": "node scripts/e2e-offline.mjs",
+    "test:pwa": "node scripts/e2e-pwa.mjs",
+    "test:tablet": "node scripts/e2e-tablet.mjs",
+    "test:electron": "node scripts/e2e-electron.mjs",
+    "icons": "node scripts/collect-icons.mjs && node scripts/fetch-icon-font.mjs"
+  },
+  "keywords": [
+    "p2p",
+    "webrtc",
+    "e2ee",
+    "material-you",
+    "monet",
+    "chat",
+    "pwa"
+  ],
+  "license": "MIT",
+  "build": {
+    "appId": "com.monet.chat",
+    "productName": "Monet Chat",
+    "asar": false,
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "server.mjs",
+      "index.html",
+      "app.css",
+      "app.js",
+      "manifest.webmanifest",
+      "sw.js",
+      "src/**/*",
+      "vendor/**/*",
+      "assets/icon.ico",
+      "assets/icon-192.png",
+      "assets/icon-512.png",
+      "assets/icon-maskable-512.png",
+      "assets/apple-touch-icon.png",
+      "assets/favicon-16.png",
+      "assets/favicon-32.png",
+      "assets/material-symbols-rounded-subset.woff2",
+      "toolchain/cloudflared.exe",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Monet Chat",
+      "artifactName": "MonetChat-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "MonetChat-Portable-${version}.${ext}"
+    }
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/keyboard": "^7.0.6",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
+    "@material/material-color-utilities": "^0.4.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
+    "electron": "^37.10.3",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.55.0"
+  }
+}
