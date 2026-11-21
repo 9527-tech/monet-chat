@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { readFile, stat, access } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
+import { EventEmitter } from 'node:events';
+import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4173);
@@ -507,6 +509,8 @@ async function handleEvents(req, res, url) {
     'X-Accel-Buffering': 'no',
     'Access-Control-Allow-Origin': '*',
   });
+  // 通过 Cloudflare Tunnel 时，边缘会缓冲小响应；先发送一段 SSE 注释把响应头/首包推出去。
+  res.write(':' + ' '.repeat(8192) + '\n\n');
   res.write('retry: 1500\n\n');
 
   const old = clients.get(id);
@@ -690,6 +694,57 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000).unref();
+
+/* WebSocket transport: Cloudflare Tunnel buffers SSE, so use WS when possible. */
+const wss = new WebSocketServer({ noServer: true });
+server.on('upgrade', (req, socket, head) => {
+  let url;
+  try {
+    url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  } catch {
+    socket.destroy();
+    return;
+  }
+  if (url.pathname !== '/ws') {
+    socket.destroy();
+    return;
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    let buffer = '';
+    const fakeRes = {
+      writeHead() {},
+      write(chunk) {
+        buffer += String(chunk);
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || '';
+        for (const block of blocks) {
+          let event = 'message';
+          let data = '';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event: ')) event = line.slice(7).trim();
+            else if (line.startsWith('data: ')) data += line.slice(6);
+          }
+          if (!data) continue;
+          try {
+            ws.send(JSON.stringify({ event, data: JSON.parse(data) }));
+          } catch {}
+        }
+      },
+      end() {
+        try { ws.close(); } catch {}
+      },
+    };
+    const fakeReq = new EventEmitter();
+    fakeReq.method = 'GET';
+    fakeReq.url = req.url;
+    fakeReq.headers = req.headers;
+    ws.on('close', () => fakeReq.emit('close'));
+    ws.on('error', () => fakeReq.emit('error'));
+    handleEvents(fakeReq, fakeRes, url).catch(() => {
+      try { ws.close(); } catch {}
+    });
+  });
+});
 
 server.listen(PORT, HOST, () => {
   const nets = os.networkInterfaces();

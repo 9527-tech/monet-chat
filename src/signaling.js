@@ -48,7 +48,82 @@ export class SignalClient extends EventTarget {
     this.dispatchEvent(new CustomEvent(type, { detail }));
   }
 
+  async connectWS(profile, { timeout = 9000 } = {}) {
+    this.profile = profile;
+    this.disconnect();
+    const url = new URL('/ws', this.base);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('id', profile.id);
+    url.searchParams.set('p', encodeProfile(profile));
+    this.emit('status', { state: 'connecting' });
+
+    const ws = new WebSocket(url.toString());
+    this.ws = ws;
+    this.es = null;
+
+    this._connectPromise = new Promise((resolve, reject) => {
+      this._resolveConnect = resolve;
+      this._rejectConnect = reject;
+      setTimeout(() => {
+        if (!this.connected) reject(new Error('连接信令服务器超时'));
+      }, timeout);
+    });
+
+    const dispatch = (event, data) => {
+      if (event === 'welcome') {
+        this.connected = true;
+        this.lastError = null;
+        this.welcomeCount++;
+        for (const room of data.rooms || []) {
+          if (room?.meta?.code) this.rooms.add(room.meta.code);
+        }
+        this.emit('welcome', data);
+        this.emit('status', { state: 'online' });
+        this._resolveConnect?.(data);
+        this._resolveConnect = null;
+        this._rejectConnect = null;
+        return;
+      }
+      if (event === 'bye') return;
+      this.emit(event, data);
+    };
+
+    ws.onopen = () => {
+      if (this.reconnecting) {
+        this.reconnecting = false;
+        this.emit('reconnected');
+      }
+    };
+    ws.onmessage = (ev) => {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch { return; }
+      if (msg?.event) dispatch(msg.event, msg.data);
+    };
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      const wasConnected = this.connected;
+      this.connected = false;
+      this.emit('status', { state: 'offline' });
+      if (!this.welcomeCount) {
+        this._rejectConnect?.(new Error('无法连接信令服务器，请确认服务已启动'));
+        this._rejectConnect = null;
+        return;
+      }
+      if (wasConnected && !this._manualClose) {
+        this.reconnecting = true;
+        setTimeout(() => {
+          if (!this.connected && this.profile) this.connectWS(this.profile, { timeout }).catch(() => {});
+        }, 1800);
+      }
+    };
+
+    return this._connectPromise;
+  }
+
   async connect(profile, { timeout = 9000 } = {}) {
+    if (typeof WebSocket !== 'undefined' && location.protocol !== 'file:') {
+      return this.connectWS(profile, { timeout });
+    }
     this.profile = profile;
     if (this.es) this.disconnect();
     const url = new URL('/api/events', this.base);
@@ -118,9 +193,13 @@ export class SignalClient extends EventTarget {
   }
 
   disconnect() {
+    this._manualClose = true;
+    try { this.ws?.close(); } catch {}
+    this.ws = null;
     this.es?.close();
     this.es = null;
     this.connected = false;
+    setTimeout(() => { this._manualClose = false; }, 0);
   }
 
   async request(path, { method = 'GET', body, timeout = 12000 } = {}) {
