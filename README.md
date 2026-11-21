@@ -5,9 +5,9 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 > 外面看起来只是「分享一个码，就能聊天」；复杂的东西都收在设置和会话信息里。
 
 - 仓库：<https://github.com/9527-tech/monet-chat>
-- 最新版本：**1.1.1**
-- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.1.1>
-- 1.1.1：壁纸自动取色（HCT 算法）、头像裁切修复、设置页转场/按压/消息入场动画、状态栏主题同步。
+- 最新版本：**1.2.0**
+- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.2.0>
+- 1.2.0：启动即自动建立公网入口（Tailscale Funnel 永久地址，缺失时自动 Cloudflare 临时地址）；应用内检查更新、Windows 自动覆盖安装、Android 覆盖安装；1.2.0 的壁纸取色/头像裁切/动画/状态栏同步全部保留。
 
 ## 功能
 
@@ -20,20 +20,21 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 - **通话**：语音、视频、屏幕共享、本地快照、通话记录。
 - **Material You**：9 张壁纸、8 种配色风格、对比度、自定义取色；深浅色随系统或手动切换。
 - **全平台**：Windows / Android / Linux 原生包；macOS、iOS 提供 Xcode 工程和构建说明。
-- **公网可达**：内置 Cloudflare Quick Tunnel 管理接口，手机在外网也能连回电脑。
+- **公网可达**：启动即自动建立公网入口。安装并登录 Tailscale 后得到**永久 HTTPS 地址**；否则自动退回 Cloudflare 临时地址。
+- **自动更新**：应用内检查新版本，Windows 下载后自动覆盖安装；Android 下载 APK 覆盖安装，不需要先卸载。详见 [永久公网与自动更新](docs/永久公网与自动更新.md)。
 
 ## 原生安装包
 
 | 平台 | 文件 |
 | --- | --- |
-| Android | [`MonetChat-1.1.1.apk`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-1.1.1.apk) |
-| Windows 安装版 | [`MonetChat-Setup-1.1.1.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-Setup-1.1.1.exe) |
-| Windows 便携版 | [`MonetChat-Portable-1.1.1.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-Portable-1.1.1.exe) |
-| Linux x64 | [`MonetChat-1.1.1-linux-x64.tar.gz`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/MonetChat-1.1.1-linux-x64.tar.gz) |
-| 源码包 | [`monet-chat-1.1.1-source.zip`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/monet-chat-1.1.1-source.zip) |
-| 完整 Git 历史 | [`monet-chat-1.1.1.bundle`](https://github.com/9527-tech/monet-chat/releases/download/v1.1.1/monet-chat-1.1.1.bundle) |
+| Android | [`MonetChat-1.2.0.apk`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/MonetChat-1.2.0.apk) |
+| Windows 安装版 | [`MonetChat-Setup-1.2.0.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/MonetChat-Setup-1.2.0.exe) |
+| Windows 便携版 | [`MonetChat-Portable-1.2.0.exe`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/MonetChat-Portable-1.2.0.exe) |
+| Linux x64 | [`MonetChat-1.2.0-linux-x64.tar.gz`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/MonetChat-1.2.0-linux-x64.tar.gz) |
+| 源码包 | [`monet-chat-1.2.0-source.zip`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/monet-chat-1.2.0-source.zip) |
+| 完整 Git 历史 | [`monet-chat-1.2.0.bundle`](https://github.com/9527-tech/monet-chat/releases/download/v1.2.0/monet-chat-1.2.0.bundle) |
 
-校验和见 [`release/SHA256SUMS.txt`](release/SHA256SUMS.txt)。
+校验和见 [`release/SHA256SUMS-1.2.0.txt`](release/SHA256SUMS-1.2.0.txt)。
 
 ### 第一次使用
 
@@ -46,7 +47,7 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 
 2. 电脑打开 `http://127.0.0.1:4173`，创建身份，点「分享邀请码」。
 3. 手机和电脑在同一 Wi-Fi：手机打开 `http://<电脑局域网IP>:4173`。
-4. 手机在外网：按 [远程访问与联调实录](docs/远程访问与联调实录.md) 启动 Cloudflare 隧道，手机打开隧道地址。
+4. 手机在外网：应用会自动建立公网入口。安装一次 Tailscale 并登录，即可获得永久地址；没有 Tailscale 时使用自动生成的 Cloudflare 临时地址。详见 [永久公网与自动更新](docs/永久公网与自动更新.md)。
 5. 两端输入同一个邀请码即可。
 
 > APK 首次启动会要求填「服务器地址」：局域网填 `http://<电脑IP>:4173`，外网填隧道 HTTPS 地址。
@@ -68,24 +69,18 @@ node server.mjs
 
 ## 远程访问
 
-Cloudflare 隧道会把本机端口映射成公网 HTTPS 地址。由于 Cloudflare 会缓冲 SSE，本项目信令已改为 **WebSocket**（`/ws`），`/api/events` 仅保留给本地/兼容场景。
+应用会自动选择公网通道，**不需要手动开隧道**：
 
-完整过程、失败路径、DNS 污染、双层 NAT、403/1034 排障都写在：
+1. 检测到已安装并登录的 Tailscale → 启动 Funnel，得到永久的 `https://<设备>.<tailnet>.ts.net`。
+2. 没有 Tailscale → 自动启动 Cloudflare Quick Tunnel（自动尝试可用 edge IP），得到临时地址。
+3. 邀请二维码/链接会自动使用当前公网地址；设置 → 网络里能看到“永久/临时”状态。
 
+由于 Cloudflare 会缓冲 SSE，本项目信令已改为 **WebSocket**（`/ws`），`/api/events` 仅保留给本地/兼容场景。完整安装步骤、DNS 污染、双层 NAT、403/1034 排障：
+
+- [`docs/永久公网与自动更新.md`](docs/永久公网与自动更新.md)
 - [`docs/远程访问与联调实录.md`](docs/远程访问与联调实录.md)
 
-最短命令：
-
-```powershell
-# 1. 服务
-$env:PORT='4175'; node server.mjs
-
-# 2. 隧道（edge IP 用 1.1.1.1 解析 region1.v2.argotunnel.com）
-toolchain\cloudflared.exe tunnel --url http://127.0.0.1:4175 `
-  --no-autoupdate --protocol http2 --edge 198.41.192.77:7844
-
-# 3. 手机打开日志里的 https://<random>.trycloudflare.com/?join=<房间码>
-```
+自动更新：设置 → 关于 → 检查更新。Windows 下载后自动覆盖安装；Android 下载 APK 覆盖安装，不需要先卸载。
 
 ## 架构
 
@@ -141,7 +136,7 @@ npm run android:release
 npm run dist:win
 ```
 
-输出：`dist/MonetChat-Setup-1.1.1.exe` 与 `dist/MonetChat-Portable-1.1.1.exe`。
+输出：`dist/MonetChat-Setup-1.2.0.exe` 与 `dist/MonetChat-Portable-1.2.0.exe`。
 
 ### Linux
 
@@ -149,7 +144,7 @@ npm run dist:win
 npm run dist:linux
 ```
 
-输出：`release/MonetChat-1.1.1-linux-x64.tar.gz`。
+输出：`release/MonetChat-1.2.0-linux-x64.tar.gz`。
 
 ### macOS / iOS
 
@@ -172,7 +167,7 @@ npm run test:tablet
 - **群聊为全互联 mesh**：人数越多上行压力越大，上限 12 人。
 - **静态 ECDH 无前向保密**：会话密钥由长期 ECDH 密钥派生；高安全场景建议后续加入双棘轮。
 - **远端直连依赖 NAT**：对称 NAT/部分运营商需要 TURN；设置里可填 TURN。
-- **Quick Tunnel 地址每次重启都变**，且公网可访问；正式使用建议 Named Tunnel + Access。
+- **临时公网地址每次重启都变**：没装 Tailscale 时才会发生；装好并登录 Tailscale 后是永久地址。
 - **EXE 未做代码签名**：SmartScreen 会提示未知发布者。
 - **iOS**：PWA 对后台通话、通知和文件保存限制较多，建议用 Android/桌面。
 

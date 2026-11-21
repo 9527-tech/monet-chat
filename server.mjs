@@ -17,6 +17,8 @@ import { EventEmitter } from 'node:events';
 import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const APP_VERSION = '1.2.0';
+const GITHUB_REPO = '9527-tech/monet-chat';
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
 const MAX_BODY = 320 * 1024;
@@ -27,10 +29,15 @@ const MAX_ROOMS = 800;
 const clients = new Map();
 const rooms = new Map();
 
-// Optional public tunnel (Cloudflare Quick Tunnel). This is what lets two
-// people on different networks exchange signalling without deploying a
-// server: the host's window keeps a public HTTPS URL alive.
-const remote = { status: 'idle', url: null, error: null, proc: null, startedAt: 0 };
+// Optional public tunnel. Two modes, in order of preference:
+//  1) Tailscale Funnel — stable https://<machine>.<tailnet>.ts.net URL, no domain,
+//     survives reboots, works behind CGNAT. One-time `tailscale up` login.
+//  2) Cloudflare Quick Tunnel — zero-account fallback, random URL per launch.
+// AUTO_TUNNEL=1 starts the best available mode together with the desktop app.
+const remote = {
+  status: 'idle', url: null, error: null, warning: null, proc: null,
+  startedAt: 0, mode: null, stable: false, verified: null, auto: process.env.AUTO_TUNNEL === '1',
+};
 
 function probePublic(url) {
   return new Promise((resolve) => {
@@ -45,10 +52,85 @@ function probePublic(url) {
   });
 }
 
-async function startRemoteTunnel() {
-  if (remote.proc || remote.status === 'starting') return remote;
+function runCmd(exe, args, timeout = 15000) {
+  return new Promise((resolve) => {
+    let out = '';
+    let err = '';
+    let child;
+    try {
+      child = spawn(exe, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      resolve({ code: -1, out, err: String(e.message || e) });
+      return;
+    }
+    const timer = setTimeout(() => { try { child.kill(); } catch {} }, timeout);
+    child.stdout.on('data', (b) => { out += b; });
+    child.stderr.on('data', (b) => { err += b; });
+    child.on('error', (e) => { clearTimeout(timer); resolve({ code: -1, out, err: String(e.message || e) }); });
+    child.on('exit', (code) => { clearTimeout(timer); resolve({ code, out, err }); });
+  });
+}
+
+async function findTailscale() {
+  const candidates = [
+    process.env.TAILSCALE,
+    process.platform === 'win32' ? 'C:\\Program Files\\Tailscale\\tailscale.exe' : '/usr/bin/tailscale',
+    process.platform === 'win32' ? 'C:\\Program Files (x86)\\Tailscale\\tailscale.exe' : '/usr/local/bin/tailscale',
+  ].filter(Boolean);
+  for (const file of candidates) {
+    try { await access(file); return file; } catch {}
+  }
+  return null;
+}
+
+async function tailscaleState(exe) {
+  const r = await runCmd(exe, ['status', '--json'], 8000);
+  if (r.code !== 0) return { ok: false, reason: (r.err || r.out || 'tailscale 未登录').trim().slice(0, 240) };
+  try {
+    const info = JSON.parse(r.out);
+    if (info.BackendState && info.BackendState !== 'Running') {
+      return { ok: false, reason: `Tailscale 状态：${info.BackendState}` };
+    }
+    const dns = String(info.Self?.DNSName || '').replace(/\.$/, '');
+    if (!dns) return { ok: false, reason: 'Tailscale 已运行，但还没有分配设备域名' };
+    return { ok: true, url: `https://${dns}`, dns };
+  } catch (e) {
+    return { ok: false, reason: `无法解析 tailscale status：${String(e.message || e)}` };
+  }
+}
+
+async function startTailscaleFunnel() {
+  const exe = await findTailscale();
+  if (!exe) return { ok: false, reason: '未安装 Tailscale' };
+  const state = await tailscaleState(exe);
+  if (!state.ok) return { ok: false, reason: state.reason };
+  const r = await runCmd(exe, ['funnel', '--bg', '--https=443', `http://127.0.0.1:${PORT}`], 20000);
+  if (r.code !== 0) {
+    const reason = (r.err || r.out || '').trim().split('\n').slice(-2).join(' ').slice(0, 300);
+    return { ok: false, reason: reason || 'Tailscale Funnel 未启用（需要在管理台开启 HTTPS/Funnel）' };
+  }
+  remote.status = 'online';
+  remote.url = state.url;
+  remote.mode = 'tailscale';
+  remote.stable = true;
+  remote.verified = null;
+  remote.warning = null;
+  remote.error = null;
+  probePublic(remote.url).then((ok) => {
+    if (remote.url !== state.url) return;
+    remote.verified = ok;
+    if (!ok) remote.warning = '稳定地址已生成，但本机 DNS 暂时无法自检；外部网络通常仍可访问';
+  });
+  return { ok: true, url: state.url };
+}
+
+function cloudflaredExe() {
   const exeName = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
-  const exe = process.env.CLOUDFLARED || path.join(ROOT, 'toolchain', exeName);
+  return process.env.CLOUDFLARED || path.join(ROOT, 'toolchain', exeName);
+}
+
+async function startCloudflared(extraArgs = [], attempt = 0) {
+  const exe = cloudflaredExe();
   try {
     await access(exe);
   } catch {
@@ -56,30 +138,27 @@ async function startRemoteTunnel() {
     remote.error = '未安装 cloudflared，远程通道不可用';
     return remote;
   }
-  remote.status = 'starting';
-  remote.error = null;
-  remote.url = null;
-  remote.startedAt = Date.now();
   const child = spawn(exe, [
     'tunnel', '--url', `http://127.0.0.1:${PORT}`,
-    '--no-autoupdate', '--protocol', 'http2',
+    '--no-autoupdate', '--protocol', 'http2', ...extraArgs,
   ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   remote.proc = child;
+  remote.mode = 'cloudflare';
+  remote.stable = false;
+  let started = false;
   const onData = (buf) => {
     const text = String(buf);
     const m = text.match(/https:\/\/([a-z0-9-]+)\.trycloudflare\.com/i);
-    if (m && !remote.url) {
+    if (m && !started) {
+      started = true;
       remote.url = m[0];
-      remote.status = 'verifying';
+      remote.status = 'online';
+      remote.error = null;
+      remote.warning = '临时公网地址每次启动都会变化；安装并登录 Tailscale 后可获得永久地址';
       probePublic(remote.url).then((ok) => {
         if (remote.url !== m[0]) return;
-        if (ok) {
-          remote.status = 'online';
-        } else {
-          remote.status = 'error';
-          remote.error = '公网地址已生成，但当前网络无法连通 Cloudflare 边缘；同一 Wi-Fi 仍可使用局域网链接';
-          try { child.kill(); } catch {}
-        }
+        remote.verified = ok;
+        if (!ok) remote.warning = '公网地址已生成；本机 DNS 无法自检，外部网络通常仍可访问';
       });
     }
   };
@@ -88,18 +167,135 @@ async function startRemoteTunnel() {
   child.on('exit', () => {
     remote.proc = null;
     if (remote.status !== 'online') {
+      if (attempt === 0) {
+        // CN DNS often poisons argotunnel SRV records. Try the opposite path
+        // once: direct edge IP first, then normal discovery (or vice versa).
+        remote.status = 'starting';
+        remote.error = null;
+        const edge = process.env.CLOUDFLARE_EDGE || '198.41.192.77:7844';
+        startCloudflared(extraArgs.length ? [] : ['--edge', edge], 1);
+        return;
+      }
       remote.status = 'error';
       remote.error = remote.error || '远程通道启动失败，请检查网络或 DNS';
     }
   });
   setTimeout(() => {
-    if (remote.status === 'starting' && !remote.url) {
-      remote.status = 'error';
+    if (!started && remote.status === 'starting') {
       remote.error = '远程通道启动超时，请检查网络';
       try { child.kill(); } catch {}
     }
   }, 30000).unref();
   return remote;
+}
+
+async function startRemoteTunnel() {
+  if (remote.proc || remote.status === 'starting' || remote.status === 'online') return remote;
+  remote.status = 'starting';
+  remote.error = null;
+  remote.warning = null;
+  remote.url = null;
+  remote.mode = null;
+  remote.stable = false;
+  remote.verified = null;
+  remote.startedAt = Date.now();
+
+  const ts = await startTailscaleFunnel();
+  if (ts.ok) return remote;
+  remote.error = ts.reason && ts.reason !== '未安装 Tailscale' ? `Tailscale：${ts.reason}` : null;
+  const edge = process.env.CLOUDFLARE_EDGE || '198.41.192.77:7844';
+  return startCloudflared(edge === 'off' ? [] : ['--edge', edge]);
+}
+
+let updateCache = { at: 0, data: null };
+
+function versionParts(v) {
+  return String(v || '0').replace(/^v/i, '').split('.').map((n) => Number(n) || 0);
+}
+
+function versionNewer(latest, current) {
+  const a = versionParts(latest);
+  const b = versionParts(current);
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    const x = a[i] || 0;
+    const y = b[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
+function githubJson(url, timeout = 12000) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, {
+      timeout,
+      headers: { 'user-agent': 'monet-chat-updater/1.0', accept: 'application/vnd.github+json' },
+    }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`GitHub HTTP ${res.statusCode}`));
+          return;
+        }
+        try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('GitHub 请求超时')); });
+    req.on('error', reject);
+  });
+}
+
+async function latestRelease() {
+  if (updateCache.data && Date.now() - updateCache.at < 10 * 60 * 1000) return updateCache.data;
+  const data = await githubJson(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
+  updateCache = { at: Date.now(), data };
+  return data;
+}
+
+function assetFor(release, platform) {
+  const assets = release.assets || [];
+  const tests = {
+    win: /Setup.*\.exe$/i,
+    android: /\.apk$/i,
+    linux: /linux.*\.tar\.gz$/i,
+    source: /source\.zip$/i,
+  };
+  const re = tests[platform] || tests.win;
+  return assets.find((a) => re.test(a.name || '')) || null;
+}
+
+async function updateInfo(platform) {
+  const release = await latestRelease();
+  const latest = String(release.tag_name || release.name || '').replace(/^v/i, '');
+  const asset = assetFor(release, platform);
+  let local = null;
+  if (asset?.name) {
+    try {
+      await access(path.join(ROOT, 'release', asset.name));
+      local = `/release/${encodeURIComponent(asset.name)}`;
+    } catch {}
+  }
+  return {
+    current: APP_VERSION,
+    latest,
+    available: versionNewer(latest, APP_VERSION) && !!asset,
+    platform,
+    name: asset?.name || null,
+    size: asset?.size || 0,
+    url: asset?.browser_download_url || release.html_url,
+    local,
+    page: release.html_url,
+    notes: String(release.body || '').slice(0, 4000),
+  };
+}
+
+function stopRemoteTunnel() {
+  if (remote.proc) {
+    try { remote.proc.kill(); } catch {}
+    remote.proc = null;
+  }
+  remote.status = 'idle';
 }
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -309,8 +505,18 @@ async function handleApi(req, res, url) {
       clients: clients.size,
       rooms: rooms.size,
       uptime: Math.round(process.uptime()),
-      version: '1.1.1',
+      version: APP_VERSION,
     });
+    return true;
+  }
+
+  if (pathname === '/api/update' && req.method === 'GET') {
+    const platform = (url.searchParams.get('platform') || 'win').toLowerCase();
+    try {
+      json(res, 200, await updateInfo(platform));
+    } catch (e) {
+      json(res, 502, { current: APP_VERSION, available: false, error: String(e.message || e) });
+    }
     return true;
   }
 
@@ -319,6 +525,11 @@ async function handleApi(req, res, url) {
       status: remote.status,
       url: remote.url,
       error: remote.error,
+      warning: remote.warning,
+      mode: remote.mode,
+      stable: remote.stable,
+      verified: remote.verified,
+      auto: remote.auto,
       startedAt: remote.startedAt,
     });
     return true;
@@ -759,10 +970,23 @@ server.listen(PORT, HOST, () => {
   console.log(`  ➜  Local:   http://localhost:${PORT}`);
   for (const ip of lan) console.log(`  ➜  Network: http://${ip}:${PORT}`);
   console.log('');
+  if (remote.auto) {
+    setTimeout(() => {
+      startRemoteTunnel().catch((e) => console.error('[remote]', e));
+    }, 1200).unref();
+  }
 });
 
-process.on('SIGINT', () => {
-  console.log('\n  再见 👋');
+function shutdown() {
+  stopRemoteTunnel();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 800);
+}
+process.on('SIGINT', () => {
+  console.log('\n  再见 👋');
+  shutdown();
+});
+process.on('SIGTERM', shutdown);
+process.on('exit', () => {
+  if (remote.proc) { try { remote.proc.kill(); } catch {} }
 });

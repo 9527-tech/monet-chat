@@ -28,7 +28,7 @@ import {
   renderIncomingCall, previewText,
 } from './src/render.js';
 
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -76,6 +76,9 @@ const state = {
   signal: null,
   peer: null,
   calls: null,
+  remote: null,
+  remoteAnnounced: false,
+  updateInfo: null,
   networkReady: false,
   connectPromise: null,
   mediaUrls: new Map(),
@@ -125,6 +128,45 @@ function normalizeServerUrl(value) {
     return url.origin + (url.pathname === '/' ? '' : url.pathname.replace(/\/+$/, ''));
   } catch {
     return '';
+  }
+}
+
+function serverBase() {
+  const configured = normalizeServerUrl(state.settings?.serverUrl);
+  if (configured) return configured;
+  if (IS_NATIVE) return NATIVE_DEFAULT_SERVER;
+  return location.origin;
+}
+
+/**
+ * The desktop server starts the best public tunnel by itself (Tailscale
+ * Funnel when available, otherwise a Cloudflare quick tunnel). The UI only
+ * observes it; the user never has to click "start tunnel".
+ */
+async function refreshRemote({ announce = true } = {}) {
+  try {
+    const res = await fetch(`${serverBase()}/api/remote`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const info = await res.json();
+    state.remote = info;
+    const modalState = document.querySelector('#remote-state');
+    const modalUrl = document.querySelector('#remote-url');
+    if (modalState) {
+      const label = info.status === 'online'
+        ? `${info.stable ? '永久地址' : '临时地址'} · ${info.verified === false ? '本机未自检' : '已就绪'}`
+        : info.status === 'starting' ? '正在建立公网通道…' : info.status === 'error' ? '建立失败' : '未开启';
+      modalState.textContent = label;
+    }
+    if (modalUrl) {
+      modalUrl.textContent = info.url || info.error || info.warning || '';
+    }
+    if (info.status === 'online' && info.url && announce && !state.remoteAnnounced) {
+      state.remoteAnnounced = true;
+      toast(`${info.stable ? '永久公网地址' : '公网地址'}已就绪，邀请链接会自动带上`, { type: 'success', timeout: 4200 });
+    }
+    return info;
+  } catch {
+    return null;
   }
 }
 
@@ -219,6 +261,9 @@ async function enterApp() {
   await loadFriends();
   await initNetwork();
   restoreActiveChat();
+  refreshRemote({ announce: true });
+  setInterval(() => refreshRemote({ announce: true }), 5000);
+  setTimeout(() => checkForUpdates({ silent: true }), 15000);
   if (state.pendingJoin) {
     const code = state.pendingJoin;
     state.pendingJoin = null;
@@ -1044,7 +1089,7 @@ async function showInviteModal(chat) {
       });
       (async () => {
         try {
-          const res = await fetch('/api/remote', { cache: 'no-store' });
+          const res = await fetch(`${serverBase()}/api/remote`, { cache: 'no-store' });
           const remoteState = await res.json();
           if (remoteState.status !== 'online' || !remoteState.url) return;
           const remoteLink = `${remoteState.url}/?join=${encodeURIComponent(chat.room)}`;
@@ -1052,7 +1097,7 @@ async function showInviteModal(chat) {
           if (!box) return;
           const wrap = document.createElement('div');
           wrap.className = 'invite-remote';
-          wrap.innerHTML = `<div class="invite-remote-label"><span class="icon">public</span>公网链接 · 跨网络可用</div>`;
+          wrap.innerHTML = `<div class="invite-remote-label"><span class="icon">${remoteState.stable ? 'lock' : 'public'}</span>${remoteState.stable ? '永久公网链接 · 重启不变' : '临时公网链接 · 重启会变'}</div>`;
           const link = document.createElement('button');
           link.type = 'button';
           link.className = 'invite-link';
@@ -2346,11 +2391,11 @@ function settingsHTML(d) {
         <div class="settings-block">
           <div class="settings-label">公网远程通道</div>
           <div class="settings-actions-row">
-            <button type="button" class="btn tonal" id="btn-remote"><span class="icon">public</span>开启远程通道</button>
-            <span id="remote-state" class="settings-note">未开启</span>
+            <button type="button" class="btn tonal" id="btn-remote"><span class="icon">public</span>重新建立公网地址</button>
+            <span id="remote-state" class="settings-note">自动启动中…</span>
           </div>
           <div id="remote-url" class="settings-note"></div>
-          <p class="settings-note">通过 Cloudflare 临时隧道把本机变成公网入口。朋友的邀请链接会带上公网地址，跨网络也能连；需要放行 TCP 443，首次连接约 10–30 秒。</p>
+          <p class="settings-note">应用启动时自动建立，不需要手动点。安装并登录 Tailscale 后是永久地址；没有 Tailscale 时自动退回 Cloudflare 临时地址，临时地址每次启动会变化。</p>
         </div>
         <div class="settings-block">
           <div class="settings-label">TURN 中继（可选）</div>
@@ -2385,6 +2430,14 @@ function settingsHTML(d) {
         <div class="prose">
           <p>没有中心化消息服务器：消息经 WebRTC DataChannel 直接从一台设备到另一台设备，使用每对设备独立的 AES-256-GCM 密钥。</p>
           <ul><li>文字、图片、文件、语音条</li><li>语音 / 视频通话与屏幕共享</li><li>群聊 mesh（最多 12 人）</li><li>代码 + 二维码邀请</li><li>9 套动态壁纸 · 8 种配色风格</li></ul>
+        </div>
+        <div class="settings-block">
+          <div class="settings-label">自动更新</div>
+          <div class="settings-actions-row">
+            <button type="button" class="btn tonal" id="btn-check-update"><span class="icon">download</span>检查更新</button>
+            <span id="update-state" class="settings-note">当前 ${APP_VERSION}</span>
+          </div>
+          <p class="settings-note">桌面版可直接下载并覆盖安装；手机版下载 APK 后交给系统安装，不需要手动卸载旧版。</p>
         </div>
       </section>
     </div>
@@ -2422,6 +2475,7 @@ function openSettings(tab = 'appearance') {
     onMount(layer, closeFn) {
       bindSettings(layer, closeFn);
       showSettingsTab(layer, tab);
+      refreshRemote({ announce: false });
     },
     onClose() {
       if (!committed) applyAppearance(original);
@@ -2504,6 +2558,111 @@ async function startRemoteFromSettings(layer) {
     if (stateEl) stateEl.textContent = '失败';
     if (urlEl) urlEl.textContent = err.message || '无法连接服务器';
   }
+}
+
+function semverNewer(a, b) {
+  const x = String(a || '0').replace(/^v/i, '').split('.').map((n) => Number(n) || 0);
+  const y = String(b || '0').replace(/^v/i, '').split('.').map((n) => Number(n) || 0);
+  for (let i = 0; i < Math.max(x.length, y.length); i += 1) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  }
+  return false;
+}
+
+async function checkForUpdates({ silent = false } = {}) {
+  const stateEl = document.getElementById('update-state');
+  if (stateEl) stateEl.textContent = '正在检查…';
+  const platform = IS_NATIVE ? 'android' : 'win';
+  let info;
+  try {
+    const res = await fetch(`${serverBase()}/api/update?platform=${platform}`, { cache: 'no-store' });
+    info = await res.json();
+    if (!res.ok) throw new Error(info.error || `HTTP ${res.status}`);
+  } catch (err) {
+    if (stateEl) stateEl.textContent = '检查失败';
+    if (!silent) toast(`检查更新失败：${err.message || err}`, { type: 'error' });
+    return null;
+  }
+  state.updateInfo = info;
+  if (!info.available) {
+    if (stateEl) stateEl.textContent = `已是最新 · ${info.current}`;
+    if (!silent) toast(`已是最新版本 ${info.current}`, { type: 'success' });
+    return info;
+  }
+  if (stateEl) stateEl.textContent = `发现 ${info.latest}`;
+  if (silent) {
+    toast(`发现新版本 ${info.latest}，可在“关于 → 检查更新”里安装`, {
+      type: 'info',
+      timeout: 6000,
+      action: () => checkForUpdates({ silent: false }),
+      actionLabel: '查看',
+    });
+    return info;
+  }
+  showUpdateDialog(info);
+  return info;
+}
+
+function showUpdateDialog(info) {
+  const notes = String(info.notes || '')
+    .replace(/[#*_`>]/g, '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .join('<br>');
+  const content = `
+    <div class="prose">
+      <p>当前 <strong>${escapeHTML(info.current)}</strong> → 最新 <strong>${escapeHTML(info.latest)}</strong></p>
+      ${info.name ? `<p>安装包：${escapeHTML(info.name)} · ${formatBytes(info.size || 0)}</p>` : ''}
+      ${notes ? `<p>${notes}</p>` : ''}
+      <p>${IS_NATIVE ? '下载 APK 后由 Android 系统完成覆盖安装，不需要先卸载旧版。' : window.monetDesktop ? '下载完成后会自动运行安装程序；应用会退出并由安装器接管。' : '将打开发布页，请下载对应平台安装包。'}</p>
+    </div>`;
+  const isDesktop = !!window.monetDesktop;
+  openModal({
+    title: '发现新版本',
+    subtitle: `Monet Chat ${info.latest}`,
+    iconName: 'download',
+    content,
+    size: 'sm',
+    actions: [
+      { label: '以后再说', variant: 'text' },
+      {
+        label: isDesktop ? '下载并安装' : IS_NATIVE ? '下载 APK' : '打开发布页',
+        variant: 'filled',
+        icon: 'download',
+        keepOpen: true,
+        onClick: async (close, layer) => {
+          if (isDesktop) {
+            const st = layer.querySelector('#update-progress');
+            if (st) st.textContent = '正在下载安装包…下载完成后应用会自动退出并安装';
+            const r = await window.monetDesktop.installUpdate(info.url);
+            if (!r.ok) {
+              if (st) st.textContent = `下载失败：${r.error || '未知错误'}`;
+              toast('更新下载失败，请改用发布页手动下载', { type: 'error' });
+            }
+            return;
+          }
+          const nativeUrl = info.local ? `${serverBase()}${info.local}` : info.url;
+          const target = IS_NATIVE ? nativeUrl : (info.url || info.page);
+          try {
+            const browser = window.Capacitor?.Plugins?.Browser;
+            if (browser) await browser.open({ url: target });
+            else window.open(target, '_blank', 'noopener');
+          } catch {
+            window.open(target, '_blank', 'noopener');
+          }
+          toast(IS_NATIVE ? '下载完成后点开 APK 安装即可覆盖旧版' : '已打开发布页', { type: 'success' });
+        },
+      },
+    ],
+    onMount(layer) {
+      const p = document.createElement('p');
+      p.id = 'update-progress';
+      p.className = 'settings-note';
+      layer.querySelector('.modal-body')?.append(p);
+    },
+  });
 }
 
 function bindSettings(layer, close) {
@@ -2605,6 +2764,10 @@ function bindSettings(layer, close) {
       } catch (err) {
         if (out) out.textContent = `失败：${err.message || '无法连接'}`;
       }
+      return;
+    }
+    if (ev.target.closest('#btn-check-update')) {
+      await checkForUpdates({ silent: false });
       return;
     }
     if (ev.target.closest('#btn-export-all')) {

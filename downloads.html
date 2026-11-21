@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Monet Chat 1.2.0 下载</title>
+<style>
+  :root{--bg:#fef7ff;--surface:#f3edf7;--surface2:#ece6f0;--text:#1d1b20;--muted:#49454f;--primary:#6750a4;--on:#fff;--border:#cac4d0}
+  @media (prefers-color-scheme:dark){:root{--bg:#141218;--surface:#211f26;--surface2:#2b2930;--text:#e6e0e9;--muted:#cac4d0;--primary:#d0bcff;--on:#381e72;--border:#49454f}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Google Sans",Roboto,"Noto Sans SC",system-ui,sans-serif;padding:28px 18px 60px}
+  main{max-width:760px;margin:0 auto}.hero{display:flex;gap:16px;align-items:center;margin-bottom:26px}.logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#ff8a65,#7c6bff);display:grid;place-items:center;color:#fff;font-size:30px;box-shadow:0 10px 24px -10px #0006}
+  h1{font-size:26px;margin:0 0 2px;letter-spacing:-.02em}.sub{color:var(--muted);font-size:13px}
+  .note{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 16px;margin:0 0 18px;font-size:13px;color:var(--muted)}
+  .grid{display:grid;gap:12px}.card{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;text-decoration:none;color:inherit;transition:transform .15s,background .2s}
+  .card:hover{background:var(--surface2)}.card:active{transform:scale(.985)}
+  .ico{width:46px;height:46px;flex:none;border-radius:14px;display:grid;place-items:center;background:var(--surface2);font-size:22px}
+  .meta{flex:1;min-width:0}.name{font-weight:650;font-size:15px}.desc{font-size:12.5px;color:var(--muted);margin-top:1px}.size{font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .arrow{font-size:20px;color:var(--primary)}
+  h2{font-size:15px;margin:28px 0 10px;color:var(--muted);font-weight:600}
+  code{background:var(--surface2);padding:1px 5px;border-radius:6px;font-size:12px}
+  .small{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <div class="logo">💬</div>
+    <div><h1>Monet Chat 1.2.0</h1><div class="sub">壁纸取色 · 朋友固定 · P2P 直连 · Material You</div></div>
+  </div>
+  <div class="note">这是本机直连下载，不走 GitHub，不会卡在境外网络。下载完成后直接运行；Windows 若提示未知发布者，点“更多信息 → 仍要运行”。</div>
+
+  <h2>Windows</h2>
+  <div class="grid">
+    <a class="card" href="release/MonetChat-Setup-1.2.0.exe" download>
+      <div class="ico">🖥️</div><div class="meta"><div class="name">安装版 Setup</div><div class="desc">推荐；开始菜单 + 桌面快捷方式，自带信令服务</div></div><div class="size">120.7 MB</div><div class="arrow">⬇</div>
+    </a>
+    <a class="card" href="release/MonetChat-Portable-1.2.0.exe" download>
+      <div class="ico">🧳</div><div class="meta"><div class="name">便携版 Portable</div><div class="desc">免安装，解压即用；不想过 UAC 选这个</div></div><div class="size">105.8 MB</div><div class="arrow">⬇</div>
+    </a>
+  </div>
+
+  <h2>Android</h2>
+  <div class="grid">
+    <a class="card" href="release/MonetChat-1.2.0.apk" download>
+      <div class="ico">🤖</div><div class="meta"><div class="name">Monet Chat APK</div><div class="desc">手机全屏单栏，平板自动双栏；首次填电脑地址</div></div><div class="size">4.0 MB</div><div class="arrow">⬇</div>
+    </a>
+  </div>
+
+  <h2>Linux / 校验</h2>
+  <div class="grid">
+    <a class="card" href="release/MonetChat-1.2.0-linux-x64.tar.gz" download>
+      <div class="ico">🐧</div><div class="meta"><div class="name">Linux x64</div><div class="desc">解压后 chmod +x monet-chat && ./monet-chat</div></div><div class="size">138.0 MB</div><div class="arrow">⬇</div>
+    </a>
+    <a class="card" href="release/SHA256SUMS-1.2.0.txt" download>
+      <div class="ico">🔐</div><div class="meta"><div class="name">SHA-256 校验值</div><div class="desc">Windows: certutil -hashfile 文件 SHA256</div></div><div class="size">1 KB</div><div class="arrow">⬇</div>
+    </a>
+  </div>
+
+  <h2>安装后怎么连</h2>
+  <div class="note" style="margin-top:0">
+    1. 先开 Windows 版，它会自动启动信令服务。<br>
+    2. 手机 APK 首次创建身份时，服务器地址填 <code>http://电脑局域网IP:4173</code>，例如 <code>http://192.168.0.5:4173</code>。<br>
+    3. Windows 端点“分享邀请码”，手机扫码或输码即可。跨公网用设置里的“公网远程通道”。
+  </div>
+  <div class="small">© 2026 Monet Chat · <a href="https://github.com/9527-tech/monet-chat" style="color:var(--primary)">GitHub</a></div>
+</main>
+</body>
+</html>
