@@ -45,7 +45,8 @@ function probePublic(url) {
 
 async function startRemoteTunnel() {
   if (remote.proc || remote.status === 'starting') return remote;
-  const exe = process.env.CLOUDFLARED || path.join(ROOT, 'toolchain', 'cloudflared.exe');
+  const exeName = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
+  const exe = process.env.CLOUDFLARED || path.join(ROOT, 'toolchain', exeName);
   try {
     await access(exe);
   } catch {

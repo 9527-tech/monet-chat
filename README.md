@@ -1,6 +1,6 @@
 # Monet Chat
 
-以 **P2P 直连** 为核心、端到端加密、Google **Material You / Monet** 动态取色的全平台聊天应用。同一套代码可运行在 Android APK、Windows EXE 和可安装 PWA 中。
+以 **P2P 直连** 为核心、端到端加密、Google **Material You / Monet** 动态取色的全平台聊天应用。同一套代码可运行在 Android APK、Windows EXE、Linux 便携包和可安装 PWA 中；macOS/iOS 工程已就绪，需在 Mac 上签名构建。
 
 没有账号，没有中心化消息存储；服务器只负责交换 SDP/ICE 和房间成员，聊天内容不经过服务器。
 
@@ -41,6 +41,9 @@
 | `MonetChat-1.1.0.apk` | Android 6.0+ | 已签名 release APK；edge-to-edge 全屏，手机单栏 / 平板双栏自动切换 |
 | `MonetChat-Setup-1.1.0.exe` | Windows 10/11 x64 | NSIS 安装版；双击安装，创建桌面与开始菜单快捷方式 |
 | `MonetChat-Portable-1.1.0.exe` | Windows 10/11 x64 | 免安装便携版；双击即用 |
+| `MonetChat-1.1.0-linux-x64.tar.gz` | Linux x64 | 解压后 `chmod +x monet-chat && ./monet-chat` |
+
+macOS 与 iOS 的原生包必须在 Mac + Xcode 上构建和签名，Windows 无法完成；工程与步骤见 [`macos/README.md`](macos/README.md)、[`ios/README.md`](ios/README.md)。不构建原生包时，Safari/Chrome 的“添加到主屏幕”PWA 覆盖这两个平台。
 
 ### 手机 / 平板首次使用
 
