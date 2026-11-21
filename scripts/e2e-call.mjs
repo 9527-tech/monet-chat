@@ -53,8 +53,15 @@ try {
   await A.page.waitForFunction(() => !document.querySelector('#btn-call')?.disabled, null, { timeout: 25000 });
   await A.page.waitForTimeout(1500);
 
+  // Simple mode hides header call buttons; calls live in the info panel.
+  async function startCall(kind) {
+    await A.page.click('#btn-info');
+    await A.page.waitForSelector('#info-panel.open', { timeout: 10000 });
+    await A.page.click(`[data-act="call-${kind}"]`);
+  }
+
   // Audio call
-  await A.page.click('#btn-call');
+  await startCall('audio');
   await B.page.waitForSelector('.call-incoming', { timeout: 15000 });
   await B.page.screenshot({ path: path.join(OUT, '09-incoming-call.png') });
   await B.page.locator('[data-call-act="accept"]').click({ force: true });
@@ -75,7 +82,7 @@ try {
 
   // Video call
   await A.page.waitForTimeout(1200);
-  await A.page.click('#btn-video');
+  await startCall('video');
   await B.page.waitForSelector('.call-incoming', { timeout: 15000 });
   await B.page.locator('[data-call-act="accept"]').click({ force: true });
   await A.page.waitForSelector('.call-screen.video-mode', { timeout: 15000 });
