@@ -27,8 +27,9 @@ import {
   renderComposerContext, renderMeCard, renderNetworkChip, renderInfo, renderCall,
   renderIncomingCall, previewText,
 } from './src/render.js';
+import { haptics, setHapticsEnabled } from './src/haptics.js';
 
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.3.0';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -54,6 +55,8 @@ const DEFAULT_SETTINGS = {
   showReadReceipts: true,
   simpleMode: true,
   relayMode: 'auto',
+  backgroundKeepAlive: true,
+  haptics: true,
   serverUrl: '',
   turnUrl: '',
   turnUser: '',
@@ -400,8 +403,28 @@ function applyAppearance(settings = state.settings) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || (dark ? '#141218' : '#FEF7FF'));
   applySimpleMode(settings);
+  applyHapticsSetting(settings);
+  applyBackgroundMode(settings);
   syncNativeBars(dark);
   cacheTheme(dark);
+}
+
+function applyHapticsSetting(settings = state.settings) {
+  setHapticsEnabled(settings?.haptics !== false);
+}
+
+function applyBackgroundMode(settings = state.settings) {
+  const enabled = settings?.backgroundKeepAlive !== false;
+  try {
+    if (IS_NATIVE) {
+      const plugin = window.Capacitor?.Plugins?.KeepAlive;
+      if (enabled) plugin?.start?.(); else plugin?.stop?.();
+    } else if (IS_ELECTRON) {
+      window.monetDesktop?.setBackgroundMode?.(enabled);
+    }
+  } catch (err) {
+    console.warn('background mode', err);
+  }
 }
 
 function applySimpleMode(settings = state.settings) {
@@ -1495,6 +1518,7 @@ function showCryptoHelp() {
 function bindSidebar() {
   $$('#chat-filters .filter-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
+      haptics.tap();
       state.filter = chip.dataset.filter || 'all';
       $$('#chat-filters .filter-chip').forEach((c) => c.classList.toggle('active', c === chip));
       renderSidebar();
@@ -1509,7 +1533,7 @@ function bindSidebar() {
 
   $id('chat-list')?.addEventListener('click', (ev) => {
     const row = ev.target.closest('.chat-row[data-chat-id]');
-    if (row) openChat(row.dataset.chatId);
+    if (row) { haptics.tap(); openChat(row.dataset.chatId); }
   });
 
   $id('search-results')?.addEventListener('click', (ev) => {
@@ -1885,6 +1909,7 @@ function bindMessageDelegation() {
     const msg = findMessage(msgEl.dataset.msgId);
     if (!msg || msg.type === 'system') return;
     ev.preventDefault();
+    haptics.heavy();
     openMessageMenu(msg, { x: ev.clientX, y: ev.clientY });
   });
   box?.addEventListener('dblclick', (ev) => {
@@ -2503,11 +2528,13 @@ function settingsHTML(d) {
       </section>
       <section class="settings-panel hidden" data-panel="general">
         <div class="settings-block">
+          <label class="settings-switch"><span><b>后台保活</b><small>关闭窗口后继续在线收消息。桌面端最小化到托盘，Android 使用前台服务常驻通知</small></span><input id="set-background" type="checkbox" ${d.backgroundKeepAlive !== false ? 'checked' : ''} /><i></i></label>
+          <label class="settings-switch"><span><b>触感反馈</b><small>按钮、切换和发送时使用系统级振动（Android / iOS）</small></span><input id="set-haptics" type="checkbox" ${d.haptics !== false ? 'checked' : ''} /><i></i></label>
           <label class="settings-switch"><span><b>减少动画</b><small>关闭过渡和装饰动效，省电也更利落</small></span><input id="set-motion" type="checkbox" ${d.reduceMotion ? 'checked' : ''} /><i></i></label>
           <label class="settings-switch"><span><b>极简界面</b><small>只保留分享邀请码、聊天与接收文件；高级能力收进会话信息</small></span><input id="set-simple" type="checkbox" ${d.simpleMode !== false ? 'checked' : ''} /><i></i></label>
         </div>
         <div class="settings-block">
-          <div class="settings-note">极简界面不会删除任何功能：通话、安全号码、P2P 状态都在「会话信息」里。</div>
+          <div class="settings-note">后台保活会增加耗电；浏览器受系统限制，无法保证锁屏后持续在线。极简界面不会删除任何功能：通话、安全号码、P2P 状态都在「会话信息」里。</div>
         </div>
       </section>
       <section class="settings-panel hidden" data-panel="network">
@@ -2621,6 +2648,7 @@ function updateSeedHint(layer, seed, auto) {
 }
 
 function showSettingsTab(layer, tab) {
+  haptics.tap();
   layer.querySelectorAll('.settings-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   layer.querySelectorAll('.settings-panel').forEach((p) => {
     const active = p.dataset.panel === tab;
@@ -2945,6 +2973,8 @@ function bindSettings(layer, close) {
     if (t.id === 'set-style') { state.settingsDraft.schemeStyle = t.value; previewDraft(); }
     if (t.id === 'set-motion') { state.settingsDraft.reduceMotion = t.checked; previewDraft(); }
     if (t.id === 'set-simple') { state.settingsDraft.simpleMode = t.checked; applySimpleMode(state.settingsDraft); }
+    if (t.id === 'set-background') { state.settingsDraft.backgroundKeepAlive = t.checked; applyBackgroundMode(state.settingsDraft); haptics.select(); }
+    if (t.id === 'set-haptics') { state.settingsDraft.haptics = t.checked; applyHapticsSetting(state.settingsDraft); haptics.select(); }
     if (t.id === 'set-sound') state.settingsDraft.sound = t.checked;
     if (t.id === 'set-notify') {
       state.settingsDraft.notifications = t.checked;
@@ -3712,6 +3742,7 @@ async function sendCurrent() {
   if (failed.length) addToOutbox(msg, payload, failed);
   msg.status = any ? 'sent' : 'failed';
   await saveAndRefresh(msg);
+  if (any) haptics.success(); else haptics.warn();
 }
 
 /* ------------------------------------------------------------------ */

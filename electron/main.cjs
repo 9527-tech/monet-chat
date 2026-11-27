@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, Menu, dialog, session, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, dialog, session, shell, ipcMain } = require('electron');
 const { spawn } = require('node:child_process');
 const http = require('node:http');
 const https = require('node:https');
@@ -11,8 +11,40 @@ const path = require('node:path');
 const APP_ID = 'com.monet.chat';
 let serverProcess = null;
 let mainWindow = null;
+let tray = null;
+let backgroundMode = false;
 let quitting = false;
 let serverPort = 0;
+
+function showMainWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function ensureTray() {
+  if (tray) return;
+  try {
+    const iconPath = path.join(rootDir(), 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon-192.png');
+    let image = nativeImage.createFromPath(iconPath);
+    if (image.isEmpty()) image = nativeImage.createEmpty();
+    tray = new Tray(image);
+    tray.setToolTip('Monet Chat 正在后台运行 · 消息照常接收');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: '打开 Monet Chat', click: showMainWindow },
+      { type: 'separator' },
+      { label: '退出', click: () => { quitting = true; app.quit(); } },
+    ]));
+    tray.on('double-click', showMainWindow);
+  } catch (err) {
+    console.warn('[tray]', err);
+  }
+}
+
+function destroyTray() {
+  if (tray) { try { tray.destroy(); } catch {} tray = null; }
+}
 
 function rootDir() {
   return app.isPackaged ? path.join(process.resourcesPath, 'app') : path.join(__dirname, '..');
@@ -167,6 +199,12 @@ ipcMain.handle('app:downloads', async () => {
   return { path: target };
 });
 
+ipcMain.handle('app:background-mode', async (_event, enabled) => {
+  backgroundMode = !!enabled;
+  if (backgroundMode) ensureTray(); else destroyTray();
+  return { ok: true, backgroundMode };
+});
+
 async function createWindow(port) {
   mainWindow = new BrowserWindow({
     width: 1320,
@@ -191,6 +229,14 @@ async function createWindow(port) {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (backgroundMode && !quitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      ensureTray();
+    }
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -240,12 +286,13 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     quitting = true;
+    destroyTray();
     if (serverProcess && !serverProcess.killed) {
       try { serverProcess.kill(); } catch {}
     }
   });
 
   app.on('window-all-closed', () => {
-    app.quit();
+    if (!backgroundMode) app.quit();
   });
 }
