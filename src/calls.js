@@ -3,7 +3,7 @@
 import { uid } from './util.js';
 
 const RING_TIMEOUT = 45000;
-const CONNECT_TIMEOUT = 35000;
+const CONNECT_TIMEOUT = 50000;
 
 export class CallManager extends EventTarget {
   constructor({ identity, peerManager, settings = {} } = {}) {
@@ -281,7 +281,7 @@ export class CallManager extends EventTarget {
       } else if (state === 'disconnected') {
         setTimeout(() => {
           if (this.session === s && s.pc?.connectionState === 'disconnected') this.end('failed', '连接中断');
-        }, 8000);
+        }, 20000);
       }
     };
   }
@@ -315,7 +315,10 @@ export class CallManager extends EventTarget {
     const s = this.session;
     if (!s || s.kind !== 'video') return;
     if (s.sharing) return this.stopShareScreen();
-    if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('此浏览器不支持屏幕共享');
+    if (window.Capacitor?.isNativePlatform?.() || /Android/i.test(navigator.userAgent)) {
+      throw new Error('手机系统不支持屏幕共享，请在 Windows 桌面端发起');
+    }
+    if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('此浏览器不支持屏幕共享，请在桌面端使用');
     const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false });
     const track = stream.getVideoTracks()[0];
     if (!track) return;

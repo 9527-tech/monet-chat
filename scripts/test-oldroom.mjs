@@ -1,0 +1,15 @@
+﻿import { chromium } from 'playwright-core';
+import fs from 'node:fs';
+const code=fs.readFileSync('toolchain/oldroom.txt','utf8').trim();
+const b=await chromium.launch({executablePath:'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true,args:['--no-sandbox']});
+const p=await b.newPage({viewport:{width:900,height:800}});
+const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+await p.goto(`http://127.0.0.1:4176/?join=${code}`,{waitUntil:'domcontentloaded'});
+await p.waitForSelector('#onboarding:not(.hidden)',{timeout:15000});
+await p.fill('#ob-name','旧房用户'); await p.click('#ob-create');
+await p.waitForSelector('#shell:not(.hidden)',{timeout:15000});
+await p.waitForTimeout(2500);
+console.log('code',code,'title',await p.textContent('#chat-title'),'toast',await p.textContent('#toast-root'));
+console.log('errors',errs);
+await p.screenshot({path:'screenshots/87-oldroom.png'});
+await b.close();

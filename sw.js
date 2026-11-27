@@ -1,6 +1,6 @@
 /* Monet Chat service worker — app shell caching, never caches signalling or media streams. */
 
-const VERSION = 'monet-chat-v1.2.0';
+const VERSION = 'monet-chat-v1.2.2';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 

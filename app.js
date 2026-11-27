@@ -28,7 +28,7 @@ import {
   renderIncomingCall, previewText,
 } from './src/render.js';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.2';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -36,6 +36,9 @@ const TITLE = 'Monet Chat — 点对点，莫奈色';
 const IS_NATIVE = typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
 const IS_ELECTRON = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent);
 const NATIVE_DEFAULT_SERVER = 'http://192.168.0.5:4173';
+if (typeof document !== 'undefined' && !navigator.mediaDevices?.getDisplayMedia) {
+  document.documentElement.classList.add('no-screen-share');
+}
 
 const DEFAULT_SETTINGS = {
   themeMode: 'system',
@@ -1115,6 +1118,120 @@ async function showInviteModal(chat) {
   return close;
 }
 
+function inviteCodeFromText(text = '') {
+  const match = String(text).match(/[DG]-[A-Z0-9]{4}-[A-Z0-9]{4}/i);
+  return match ? match[0].toUpperCase() : '';
+}
+
+async function openScanJoin() {
+  let stream = null;
+  let raf = 0;
+  let stopped = false;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const stop = () => {
+    stopped = true;
+    cancelAnimationFrame(raf);
+    stream?.getTracks().forEach((t) => t.stop());
+    stream = null;
+  };
+  const finish = (text) => {
+    const code = inviteCodeFromText(text);
+    if (!code) {
+      toast('没有识别到邀请码，请对准二维码重试', { type: 'warning' });
+      return;
+    }
+    stop();
+    closeModal();
+    setTimeout(() => joinByCode(code), 120);
+  };
+  let closeModal = () => {};
+  closeModal = openModal({
+    title: '扫码加入',
+    subtitle: '扫描朋友分享的邀请二维码',
+    iconName: 'qr_code_scanner',
+    size: 'sm',
+    className: 'scan-modal',
+    content: `
+      <div class="qr-scan">
+        <video id="qr-video" playsinline muted></video>
+        <div class="qr-scan-frame"></div>
+        <p id="qr-scan-hint">正在打开摄像头…</p>
+        <div class="qr-scan-actions">
+          <button type="button" id="qr-pick" class="btn tonal"><span class="icon">photo_library</span>从相册选择</button>
+        </div>
+        <input type="file" id="qr-file" accept="image/*" hidden />
+      </div>`,
+    actions: [{ label: '手动输入邀请码', variant: 'text', onClick: (close) => { stop(); close(); setTimeout(() => joinByCode(), 150); } }],
+    onClose: stop,
+    onMount: (layer) => {
+      const video = layer.querySelector('#qr-video');
+      const hint = layer.querySelector('#qr-scan-hint');
+      const file = layer.querySelector('#qr-file');
+      const detect = async (source, width, height) => {
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(source, 0, 0, width, height);
+        const data = ctx.getImageData(0, 0, width, height);
+        if (window.jsQR) {
+          const decoded = window.jsQR(data.data, width, height, { inversionAttempts: 'dontInvert' });
+          if (decoded?.data) return decoded.data;
+        }
+        if (window.BarcodeDetector) {
+          try {
+            const found = await new window.BarcodeDetector({ formats: ['qr_code'] }).detect(source);
+            if (found?.[0]?.rawValue) return found[0].rawValue;
+          } catch {}
+        }
+        return '';
+      };
+      const scanFrame = async () => {
+        if (stopped) return;
+        if (video.readyState >= 2) {
+          try {
+            const text = await detect(video, video.videoWidth, video.videoHeight);
+            if (text) return finish(text);
+          } catch {}
+        }
+        raf = requestAnimationFrame(scanFrame);
+      };
+      const openCamera = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+          });
+          video.srcObject = stream;
+          await video.play().catch(() => {});
+          hint.textContent = '把二维码放进框内，识别后会自动加入';
+          scanFrame();
+        } catch {
+          hint.textContent = '无法打开摄像头，可从相册选择二维码图片';
+        }
+      };
+      file.addEventListener('change', async () => {
+        const picked = file.files?.[0];
+        if (!picked) return;
+        const url = URL.createObjectURL(picked);
+        const img = new Image();
+        img.onload = async () => {
+          try {
+            const text = await detect(img, img.naturalWidth, img.naturalHeight);
+            URL.revokeObjectURL(url);
+            if (text) finish(text);
+            else toast('图片里没有识别到二维码', { type: 'warning' });
+          } catch {
+            toast('图片识别失败', { type: 'error' });
+          }
+        };
+        img.src = url;
+      });
+      layer.querySelector('#qr-pick')?.addEventListener('click', () => file.click());
+      openCamera();
+    },
+  });
+}
+
 async function joinByCode(codeArg) {
   let code = codeArg;
   if (!code) {
@@ -1135,7 +1252,12 @@ async function joinByCode(codeArg) {
   if (!state.me) { state.pendingJoin = code; return; }
   try {
     await ensureNetwork();
-    const room = await state.signal.getRoom(code);
+    let room;
+    try {
+      room = await state.signal.getRoom(code);
+    } catch {
+      room = { code, kind: code.startsWith('G-') ? 'group' : 'dm', name: code.startsWith('G-') ? '恢复的群聊' : '私聊' };
+    }
     const data = await state.peer.joinRoom(code);
     const peers = data.peers || [];
     let chat;
@@ -1264,7 +1386,7 @@ function bindGlobalUI() {
       ],
     });
   });
-  $id('btn-join')?.addEventListener('click', () => joinByCode());
+  $id('btn-join')?.addEventListener('click', () => openScanJoin());
   $id('btn-empty-new')?.addEventListener('click', () => createInvite('dm'));
   $id('btn-empty-group')?.addEventListener('click', () => createInvite('group'));
   $id('install-banner')?.addEventListener('click', promptInstall);
@@ -1976,6 +2098,13 @@ function wireCallEvents() {
   });
   calls.on('ended', (info) => {
     logCall(info);
+    if (info?.reason === 'failed') {
+      toast(`通话失败：${info.detail || '无法建立媒体通道，请检查网络或 TURN 设置'}`, { type: 'error', timeout: 6000 });
+    } else if (info?.reason === 'no-answer') {
+      toast('对方没有接听', { type: 'info' });
+    } else if (info?.reason === 'busy') {
+      toast('对方正在通话中', { type: 'warning' });
+    }
     state.callSession = null;
     state.callStreams = { local: null, remote: null };
     state.incomingCall = null;
@@ -2250,13 +2379,13 @@ async function markChatRead(chat = activeChat()) {
 
 async function loadOlder() {
   const chat = activeChat();
-  if (!chat || state.loadingOlder || state.hasOlder.has(chat.id)) return;
+  if (!chat || state.loadingOlder || !state.hasOlder.has(chat.id)) return;
   const msgs = state.messages.get(chat.id) || [];
   if (!msgs.length) return;
   state.loadingOlder = true;
   try {
     const older = await db.getMessages(chat.id, { limit: 60, before: msgs[0].ts });
-    if (older.length < 60) state.hasOlder.add(chat.id);
+    if (older.length < 60) state.hasOlder.delete(chat.id);
     if (older.length) {
       const seen = new Set(msgs.map((m) => m.id));
       state.messages.set(chat.id, [...older.filter((m) => !seen.has(m.id)), ...msgs]);

@@ -17,7 +17,7 @@ import { EventEmitter } from 'node:events';
 import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.2';
 const GITHUB_REPO = '9527-tech/monet-chat';
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -446,8 +446,19 @@ function ensureRoomLimit() {
 }
 
 function addToRoom(client, code) {
-  const room = rooms.get(code);
-  if (!room) throw new Error('房间不存在');
+  let room = rooms.get(code);
+  if (!room) {
+    // Keep old invite codes usable after a restart or TTL cleanup.
+    room = {
+      code,
+      kind: code.startsWith('G-') ? 'group' : 'dm',
+      name: code.startsWith('G-') ? '恢复的群聊' : '私聊',
+      createdAt: Date.now(),
+      lastActive: Date.now(),
+      members: new Set(),
+    };
+    rooms.set(code, room);
+  }
   const already = room.members.has(client.id);
   if (!already) {
     const max = room.kind === 'dm' ? 2 : 12;

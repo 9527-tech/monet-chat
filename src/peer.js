@@ -35,6 +35,12 @@ export function defaultIceServers(settings = {}) {
   const servers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    // Public relay for calls across carrier-grade NAT (mobile networks).
+    {
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ];
   if (settings.turnUrl) {
     servers.push({

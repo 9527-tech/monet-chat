@@ -1,6 +1,6 @@
 {
   "name": "monet-chat",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "description": "P2P-first, end-to-end encrypted chat with Google Material You dynamic color.",
