@@ -1,8 +1,9 @@
-﻿import { chromium } from 'playwright-core';
+import { chromium } from 'playwright-core';
 const EDGE='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const browser=await chromium.launch({executablePath:EDGE,headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream','--no-sandbox']});
 const ctx=await browser.newContext({viewport:{width:1280,height:900},locale:'zh-CN',permissions:['camera','microphone']});
 const p=await ctx.newPage(); const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+p.on('response',r=>{if(r.status()===404)console.log('404',r.url())});
 await p.goto('http://127.0.0.1:4176',{waitUntil:'domcontentloaded'});
 await p.waitForSelector('#onboarding:not(.hidden)',{timeout:15000});
 await p.fill('#ob-name','扫码测试'); await p.click('#ob-create'); await p.waitForSelector('#shell:not(.hidden)',{timeout:15000});
