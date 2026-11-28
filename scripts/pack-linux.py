@@ -2,7 +2,7 @@ import os
 import tarfile
 
 SRC = 'dist-linux/linux-unpacked'
-OUT = 'release/MonetChat-1.3.0-linux-x64.tar.gz'
+OUT = 'release/MonetChat-1.4.0-linux-x64.tar.gz'
 os.makedirs('release', exist_ok=True)
 
 with tarfile.open(OUT, 'w:gz', compresslevel=6) as tar:

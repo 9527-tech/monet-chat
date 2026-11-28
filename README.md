@@ -1,13 +1,13 @@
-# Monet Chat 1.3.0
+# Monet Chat 1.4.0
 
-P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用。
+P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用。
 
 外面看起来只是「分享一个码，就能聊天」；复杂功能都收在设置与会话信息里。
 
 - 仓库：<https://github.com/9527-tech/monet-chat>
 - 永久公网地址：<https://monet-chat.tailb40225.ts.net>
-- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.3.0>
-- 1.3.0 新内容：后台保活开关、Android 前台服务、系统级触感反馈、单图标启动页、Material 3 expressive 动效与状态层；同时保留 1.2.2 的扫码加入、旧房间自动恢复、通话失败提示与 TURN 兜底。
+- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.4.0>
+- 1.4.0 新内容：完整 Material 3 重构、手机底部导航、平板/桌面自适应双栏、全屏手机设置、二维码扫描、旧邀请码自动恢复、历史消息上滑修复、图片/文件卡片重排；保留后台保活、触感反馈、单图标启动页、自动公网与自动更新。
 
 ## 功能
 
@@ -29,10 +29,10 @@ P2P 优先、端到端加密、Material You 动态取色的全平台聊天应用
 
 | 平台 | 文件 |
 | --- | --- |
-| Android | [`MonetChat-1.3.0.apk`](release/MonetChat-1.3.0.apk) |
-| Windows 安装版 | [`MonetChat-Setup-1.3.0.exe`](release/MonetChat-Setup-1.3.0.exe) |
-| Windows 便携版 | [`MonetChat-Portable-1.3.0.exe`](release/MonetChat-Portable-1.3.0.exe) |
-| Linux x64 | [`MonetChat-1.3.0-linux-x64.tar.gz`](release/MonetChat-1.3.0-linux-x64.tar.gz) |
+| Android | [`MonetChat-1.4.0.apk`](release/MonetChat-1.4.0.apk) |
+| Windows 安装版 | [`MonetChat-Setup-1.4.0.exe`](release/MonetChat-Setup-1.4.0.exe) |
+| Windows 便携版 | [`MonetChat-Portable-1.4.0.exe`](release/MonetChat-Portable-1.4.0.exe) |
+| Linux x64 | [`MonetChat-1.4.0-linux-x64.tar.gz`](release/MonetChat-1.4.0-linux-x64.tar.gz) |
 
 Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍要运行」。Android 覆盖安装会保留本地数据，不会清空聊天记录。
 
@@ -40,13 +40,13 @@ Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍�
 
 ### Windows
 
-1. 运行 `MonetChat-Setup-1.3.0.exe`，或直接运行免安装的 Portable 版。
+1. 运行 `MonetChat-Setup-1.4.0.exe`，或直接运行免安装的 Portable 版。
 2. 首次启动填写昵称，等待网络状态变成「在线」。
 3. 点「分享邀请码」，把邀请码/二维码发给朋友。
 
 ### Android
 
-1. 安装 `MonetChat-1.3.0.apk`。
+1. 安装 `MonetChat-1.4.0.apk`。
 2. 首次启动填写昵称和信令服务器地址：
    - 同一 Wi-Fi：`http://192.168.0.5:4175`
    - 公网：`https://monet-chat.tailb40225.ts.net`
@@ -55,7 +55,7 @@ Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍�
 ### Linux
 
 ```bash
-tar -xzf MonetChat-1.3.0-linux-x64.tar.gz
+tar -xzf MonetChat-1.4.0-linux-x64.tar.gz
 cd linux-unpacked
 chmod +x monet-chat
 ./monet-chat

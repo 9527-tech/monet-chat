@@ -29,7 +29,7 @@ import {
 } from './src/render.js';
 import { haptics, setHapticsEnabled } from './src/haptics.js';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -1275,13 +1275,8 @@ async function joinByCode(codeArg) {
   if (!state.me) { state.pendingJoin = code; return; }
   try {
     await ensureNetwork();
-    let room;
-    try {
-      room = await state.signal.getRoom(code);
-    } catch {
-      room = { code, kind: code.startsWith('G-') ? 'group' : 'dm', name: code.startsWith('G-') ? '恢复的群聊' : '私聊' };
-    }
     const data = await state.peer.joinRoom(code);
+    const room = data.room || { code, kind: code.startsWith('G-') ? 'group' : 'dm', name: code.startsWith('G-') ? '恢复的群聊' : '私聊' };
     const peers = data.peers || [];
     let chat;
     if (room.kind === 'group' || code.startsWith('G-')) {
@@ -1413,6 +1408,17 @@ function bindGlobalUI() {
   $id('btn-empty-new')?.addEventListener('click', () => createInvite('dm'));
   $id('btn-empty-group')?.addEventListener('click', () => createInvite('group'));
   $id('install-banner')?.addEventListener('click', promptInstall);
+  $$('#mobile-nav [data-nav]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      haptics.tap();
+      const nav = btn.dataset.nav;
+      if (nav === 'settings') { openSettings('appearance'); return; }
+      if (nav === 'new') { createInvite('dm'); return; }
+      if (nav === 'friends') { setChatFilter('dm'); closeChat(); return; }
+      setChatFilter('all');
+      closeChat();
+    });
+  });
 
   window.addEventListener('online', () => { setNetwork('connecting'); retryNetwork(); });
   window.addEventListener('offline', () => setNetwork('offline'));
@@ -1515,13 +1521,22 @@ function showCryptoHelp() {
 /* sidebar                                                             */
 /* ------------------------------------------------------------------ */
 
+function setChatFilter(filter = 'all') {
+  state.filter = filter;
+  $$('#chat-filters .filter-chip').forEach((c) => c.classList.toggle('active', (c.dataset.filter || 'all') === filter));
+  $$('#mobile-nav [data-nav]').forEach((c) => {
+    const target = c.dataset.nav;
+    const active = target === 'friends' ? filter === 'dm' : target === 'chats' ? filter !== 'dm' : false;
+    c.classList.toggle('active', active);
+  });
+  renderSidebar();
+}
+
 function bindSidebar() {
   $$('#chat-filters .filter-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
       haptics.tap();
-      state.filter = chip.dataset.filter || 'all';
-      $$('#chat-filters .filter-chip').forEach((c) => c.classList.toggle('active', c === chip));
-      renderSidebar();
+      setChatFilter(chip.dataset.filter || 'all');
     });
   });
 

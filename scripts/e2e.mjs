@@ -144,6 +144,21 @@ try {
   console.log('file transfer ok', JSON.stringify(fileState));
 
 
+  const cardStyle = await A.page.evaluate(() => {
+    const f = document.querySelector('.msg .file-attachment');
+    const info = f?.querySelector('.file-info');
+    const name = info?.querySelector('.file-name');
+    return {
+      align: f ? getComputedStyle(f).textAlign : null,
+      justify: f ? getComputedStyle(f).justifyContent : null,
+      infoAlign: info ? getComputedStyle(info).alignItems : null,
+      nameAlign: name ? getComputedStyle(name).textAlign : null,
+      rect: f ? { x: f.getBoundingClientRect().x, w: f.getBoundingClientRect().width } : null,
+      nameRect: name ? { x: name.getBoundingClientRect().x, w: name.getBoundingClientRect().width } : null,
+      sw: navigator.serviceWorker?.controller?.scriptURL || null,
+    };
+  });
+  console.log('card style', JSON.stringify(cardStyle));
   await A.page.waitForTimeout(900);
   await A.page.screenshot({ path: path.join(OUT, '03-chat-A.png') });
   await B.page.screenshot({ path: path.join(OUT, '04-chat-B.png') });
