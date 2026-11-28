@@ -1,0 +1,13 @@
+﻿import { chromium } from 'playwright-core';
+import path from 'node:path';
+const browser = await chromium.launch({ executablePath:'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless:true, args:['--no-sandbox'] });
+const ctx = await browser.newContext({ viewport:{width:1440,height:900}, locale:'zh-CN' });
+const p = await ctx.newPage();
+const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error') errs.push(m.text())});
+await p.goto('http://127.0.0.1:4177',{waitUntil:'domcontentloaded'});
+await p.waitForSelector('#onboarding:not(.hidden)'); await p.fill('#ob-name','导航测试'); await p.click('#ob-create'); await p.waitForSelector('#shell:not(.hidden)'); await p.waitForTimeout(400);
+await p.click('#list-view [data-view="friends"]'); await p.waitForTimeout(400);
+await p.screenshot({path:'screenshots/nav-friends.png'});
+console.log(JSON.stringify(await p.evaluate(()=>({view:document.body.classList.contains('friends-view'),filters:getComputedStyle(document.querySelector('#chat-filters')).display,seg:[...document.querySelectorAll('#list-view .seg-btn')].map(b=>[b.textContent,b.classList.contains('active')])}))));
+console.log('errors',errs);
+await browser.close();
