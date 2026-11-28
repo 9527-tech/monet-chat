@@ -1,0 +1,21 @@
+import { chromium } from 'playwright-core';
+const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const b = await chromium.launch({ executablePath: EDGE, headless: true, args: ['--no-sandbox'] });
+const c = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'zh-CN' });
+const p = await c.newPage();
+await p.goto(process.env.BASE_URL || 'http://127.0.0.1:4177', { waitUntil: 'domcontentloaded' });
+await p.waitForSelector('#onboarding:not(.hidden)');
+await p.fill('#ob-name','量');
+await p.click('#ob-create');
+await p.waitForSelector('#shell:not(.hidden)');
+await p.click('[data-nav="settings"]');
+await p.waitForSelector('.settings-tabs');
+await p.waitForTimeout(900);
+await p.screenshot({ path: 'screenshots/measure-settings-full.png' });
+await p.locator('.settings-modal').screenshot({ path: 'screenshots/measure-settings-el.png' });
+console.log(JSON.stringify(await p.evaluate(() => {
+  const q = s => document.querySelector(s);
+  const info = s => { const e=q(s); if(!e) return null; const r=e.getBoundingClientRect(); const st=getComputedStyle(e); return {s, top:r.top, h:r.height, pad:st.padding, place:st.placeItems, align:st.alignItems, max:st.maxHeight, height:st.height, box:st.boxSizing, pos:st.position}; };
+  return [info('#modal-root'),info('.modal-layer'),info('.settings-modal')];
+}), null, 2));
+await b.close();

@@ -1,72 +1,128 @@
-from PIL import Image, ImageDraw, ImageFilter
-import math, os
+"""Monet Chat launcher / brand icon generator.
+
+Design: warm ivory ground, deep ink speech bubble, one terracotta dot.
+No gradients, no glow, no tiny detail: it stays readable at 48 px and the
+monochrome layer gives Android / Nothing OS a proper themed icon.
+"""
+from PIL import Image, ImageDraw
+import os
 
 S = 1024
-img = Image.new('RGBA', (S,S), (0,0,0,0))
-# background gradient (diagonal)
-top = (255, 122, 110)      # coral
-bottom = (120, 92, 255)    # violet
-for y in range(S):
-    for_x = y / (S-1)
-    # vertical base + horizontal shift
-    pass
-# faster: draw vertical gradient then overlay horizontal gradient
-bg = Image.new('RGBA',(S,S))
-d = ImageDraw.Draw(bg)
-for y in range(S):
-    t = y/(S-1)
-    # ease
-    tt = t*t*(3-2*t)
-    r = int(top[0]*(1-tt)+bottom[0]*tt)
-    g = int(top[1]*(1-tt)+bottom[1]*tt)
-    b = int(top[2]*(1-tt)+bottom[2]*tt)
-    d.line([(0,y),(S,y)], fill=(r,g,b,255))
-# radial glows
-glow = Image.new('RGBA',(S,S),(0,0,0,0))
-gd = ImageDraw.Draw(glow)
-gd.ellipse([-S*0.25, -S*0.2, S*0.9, S*0.95], fill=(255, 210, 120, 90))
-glow = glow.filter(ImageFilter.GaussianBlur(S*0.12))
-bg = Image.alpha_composite(bg, glow)
-glow2 = Image.new('RGBA',(S,S),(0,0,0,0))
-gd2 = ImageDraw.Draw(glow2)
-gd2.ellipse([S*0.35, S*0.35, S*1.25, S*1.25], fill=(90, 220, 255, 80))
-glow2 = glow2.filter(ImageFilter.GaussianBlur(S*0.14))
-bg = Image.alpha_composite(bg, glow2)
-d = ImageDraw.Draw(bg)
+IVORY = (245, 239, 230, 255)
+INK = (30, 27, 24, 255)
+ACCENT = (217, 119, 87, 255)
 
-# white chat bubble
-bw, bh = 560, 430
-x0, y0 = (S-bw)//2, S*0.30
-r = 130
-d.rounded_rectangle([x0,y0,x0+bw,y0+bh], radius=r, fill=(255,255,255,245))
-# tail
-d.polygon([(x0+120, y0+bh-10),(x0+120, y0+bh+120),(x0+330, y0+bh-10)], fill=(255,255,255,245))
-# dots
-cy = y0+bh/2
-for i,dx in enumerate([-105,0,105]):
-    rr = 42
-    d.ellipse([x0+bw/2+dx-rr, cy-rr, x0+bw/2+dx+rr, cy+rr], fill=(233, 74, 120, 255) if i==1 else (120, 92, 255, 255))
-# sparkle top right
-def star(cx, cy, R, r, fill):
-    pts=[]
-    for i in range(8):
-        ang = -math.pi/2 + i*math.pi/4
-        rad = R if i%2==0 else r
-        pts.append((cx+rad*math.cos(ang), cy+rad*math.sin(ang)))
-    d.polygon(pts, fill=fill)
-star(S*0.79, S*0.22, 80, 26, (255,255,255,235))
-star(S*0.22, S*0.72, 44, 15, (255,255,255,200))
-# clip rounded square
-mask = Image.new('L',(S,S),0)
-md = ImageDraw.Draw(mask)
-md.rounded_rectangle([0,0,S,S], radius=int(S*0.225), fill=255)
-out = Image.new('RGBA',(S,S),(0,0,0,0))
-out.paste(bg,(0,0),mask)
-os.makedirs('monet-chat/assets', exist_ok=True)
-for size,name in [(512,'icon-512.png'),(192,'icon-192.png'),(180,'apple-touch-icon.png'),(32,'favicon-32.png'),(16,'favicon-16.png')]:
-    out.resize((size,size), Image.LANCZOS).save('monet-chat/assets/'+name)
-# maskable: safe area 80%, background full square no rounding
-maskable = Image.new('RGBA',(S,S),(0,0,0,0))
-maskable.paste(bg,(0,0))
-maskable.resize((512,512), Image.LANCZOS).save('monet-chat/assets/icon-maskable-512.png')
-print('icons ok')
+ASSETS = os.path.join(os.path.dirname(__file__), "..", "assets")
+ANDROID = os.path.join(os.path.dirname(__file__), "..", "android", "app", "src", "main", "res")
+
+
+def rounded_mask(size, radius_ratio=0.235):
+    m = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(m)
+    d.rounded_rectangle([0, 0, size, size], radius=int(size * radius_ratio), fill=255)
+    return m
+
+
+def circle_mask(size):
+    m = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(m)
+    d.ellipse([0, 0, size, size], fill=255)
+    return m
+
+
+def draw_bubble(draw, scale=1.0, cx=0.5, cy=0.52, light=False, mono=False):
+    """Draw the bubble + tail + three dots. Coordinates are fractions of 1024."""
+    w, h = 600 * scale, 430 * scale
+    x = S * cx - w / 2
+    y = S * cy - h / 2
+    r = 140 * scale
+    fill = (255, 255, 255, 255) if mono else (IVORY if light else INK)
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=r, fill=fill)
+    draw.polygon([(x + 100 * scale, y + h - 30 * scale),
+                  (x + 100 * scale, y + h + 150 * scale),
+                  (x + 335 * scale, y + h - 30 * scale)], fill=fill)
+    dot_r = 38 * scale
+    gap = 116 * scale
+    cy_dot = y + h * 0.5
+    for i, dx in enumerate((-gap, 0, gap)):
+        if mono:
+            color = (0, 0, 0, 0)
+        elif i == 1:
+            color = ACCENT
+        else:
+            color = INK if light else IVORY
+        draw.ellipse([x + w / 2 + dx - dot_r, cy_dot - dot_r,
+                      x + w / 2 + dx + dot_r, cy_dot + dot_r], fill=color)
+
+
+def legacy(size, round_icon=False):
+    master = Image.new("RGBA", (S, S), IVORY)
+    draw_bubble(ImageDraw.Draw(master), scale=0.92, cy=0.52)
+    mask = circle_mask(S) if round_icon else rounded_mask(S)
+    out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    out.paste(master, (0, 0), mask)
+    return out.resize((size, size), Image.LANCZOS)
+
+
+def foreground(size, mono=False):
+    master = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    # 54% of the 108dp canvas keeps the glyph inside Android's 66dp safe zone.
+    draw_bubble(ImageDraw.Draw(master), scale=0.92, cy=0.51, light=False, mono=mono)
+    return master.resize((size, size), Image.LANCZOS)
+
+
+def splash(size=640):
+    master = Image.new("RGBA", (size, size), IVORY)
+    glyph = foreground(1024)
+    glyph = glyph.resize((int(size * 0.58), int(size * 0.58)), Image.LANCZOS)
+    master.alpha_composite(glyph, ((size - glyph.width) // 2, (size - glyph.height) // 2))
+    return master
+
+
+def main():
+    os.makedirs(ASSETS, exist_ok=True)
+    # Web / PWA icons
+    legacy(512).save(os.path.join(ASSETS, "icon-512.png"))
+    legacy(192).save(os.path.join(ASSETS, "icon-192.png"))
+    legacy(180).save(os.path.join(ASSETS, "apple-touch-icon.png"))
+    legacy(32).save(os.path.join(ASSETS, "favicon-32.png"))
+    legacy(16).save(os.path.join(ASSETS, "favicon-16.png"))
+    # Maskable: full-bleed square, glyph well inside the safe circle.
+    maskable = Image.new("RGBA", (S, S), IVORY)
+    hero = foreground(1024)
+    hero = hero.resize((int(S * 0.74), int(S * 0.74)), Image.LANCZOS)
+    maskable.alpha_composite(hero, ((S - hero.width) // 2, (S - hero.height) // 2))
+    maskable.resize((512, 512), Image.LANCZOS).save(os.path.join(ASSETS, "icon-maskable-512.png"))
+
+    # Windows .ico
+    ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    legacy(256).save(os.path.join(ASSETS, "icon.ico"), sizes=ico_sizes)
+
+    # Android legacy / round
+    for dpi, px in (("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)):
+        folder = os.path.join(ANDROID, f"mipmap-{dpi}")
+        os.makedirs(folder, exist_ok=True)
+        legacy(px).save(os.path.join(folder, "ic_launcher.png"))
+        legacy(px, round_icon=True).save(os.path.join(folder, "ic_launcher_round.png"))
+
+    # Android adaptive foreground / monochrome (108dp)
+    for dpi, px in (("mdpi", 108), ("hdpi", 162), ("xhdpi", 216), ("xxhdpi", 324), ("xxxhdpi", 432)):
+        folder = os.path.join(ANDROID, f"mipmap-{dpi}")
+        foreground(px).save(os.path.join(folder, "ic_launcher_foreground.png"))
+        foreground(px, mono=True).save(os.path.join(folder, "ic_launcher_monochrome.png"))
+
+    # Splash: replace all density variants with the new mark on ivory.
+    splash_img = splash(640)
+    for root, _dirs, files in os.walk(os.path.join(ANDROID, "drawable")):
+        if "splash.png" in files:
+            splash_img.save(os.path.join(root, "splash.png"))
+    for name in ("drawable",):
+        p = os.path.join(ANDROID, name, "splash.png")
+        if os.path.exists(p):
+            splash_img.save(p)
+
+    print("icons ok: ivory + ink + terracotta, monochrome layer included")
+
+
+if __name__ == "__main__":
+    main()

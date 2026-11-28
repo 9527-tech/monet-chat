@@ -272,6 +272,10 @@ export async function compressImage(file, maxDim = 1600, quality = 0.82) {
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
+    // JPEG has no alpha: paint the brand ivory first, otherwise transparent
+    // PNG corners turn into black wedges in chat bubbles.
+    ctx.fillStyle = '#F5EFE6';
+    ctx.fillRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
     const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', quality));
     const dataURL = canvas.toDataURL('image/jpeg', 0.7);

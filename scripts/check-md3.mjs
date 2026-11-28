@@ -32,7 +32,7 @@ console.log(JSON.stringify(await page.evaluate(() => ({
 }))));
 await page.getByRole('button', { name: '完成' }).click();
 
-await page.click('#btn-settings');
+await page.click('.rail-btn[data-rail="settings"]');
 await page.waitForSelector('.settings-tabs');
 await page.screenshot({ path: path.join(OUT, 'md3-03-settings.png') });
 await page.click('.settings-tab[data-tab="general"]');

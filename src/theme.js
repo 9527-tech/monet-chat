@@ -44,6 +44,12 @@ export function seedFromWallpaper(wallpaper) {
 
 export const WALLPAPERS = [
   {
+    id: 'linen',
+    name: '暖石',
+    seed: '#A97C6B',
+    bg: 'linear-gradient(135deg, #F7F1E8 0%, #EAD9CC 55%, #D8B9AB 100%)',
+  },
+  {
     id: 'aurora',
     name: '极光',
     seed: '#7C6BFF',
@@ -178,12 +184,12 @@ export function wallpaperById(id) {
 export function resolveWallpaper(settings = {}) {
   const w = settings.wallpaper;
   if (w && typeof w === 'object' && w.type === 'image' && w.dataUrl) return w;
-  return { type: 'preset', ...wallpaperById(w || settings.wallpaperId || 'aurora') };
+  return { type: 'preset', ...wallpaperById(w || settings.wallpaperId || 'linen') };
 }
 
 export function wallpaperBackground(wall) {
   if (wall?.type === 'image') return `url("${wall.dataUrl}")`;
-  return (wall || wallpaperById('aurora')).bg;
+  return (wall || wallpaperById('linen')).bg;
 }
 
 export function buildScheme(seedHex, isDark, { style = 'tonal', contrast = 'standard' } = {}) {

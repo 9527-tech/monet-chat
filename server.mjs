@@ -17,7 +17,7 @@ import { EventEmitter } from 'node:events';
 import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const GITHUB_REPO = '9527-tech/monet-chat';
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';

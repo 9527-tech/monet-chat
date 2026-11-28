@@ -29,7 +29,7 @@ import {
 } from './src/render.js';
 import { haptics, setHapticsEnabled } from './src/haptics.js';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -43,10 +43,10 @@ if (typeof document !== 'undefined' && !navigator.mediaDevices?.getDisplayMedia)
 
 const DEFAULT_SETTINGS = {
   themeMode: 'system',
-  seed: '#7C6BFF',
+  seed: '#A97C6B',
   schemeStyle: 'tonal',
   contrast: 'standard',
-  wallpaper: 'aurora',
+  wallpaper: 'linen',
   autoSeed: true,
   sound: true,
   notifications: true,
@@ -213,7 +213,18 @@ async function boot() {
   bindCallUI();
   bindKeyboard();
 
-  state.settings = { ...DEFAULT_SETTINGS, ...((await db.loadSettings()) || {}) };
+  const savedSettings = (await db.loadSettings()) || null;
+  state.settings = { ...DEFAULT_SETTINGS, ...(savedSettings || {}) };
+  // One-time palette refresh: the old lavender default was too loud for the new shell.
+  if (!savedSettings?.m3Palette) {
+    if (savedSettings && savedSettings.wallpaper === 'aurora' && String(savedSettings.seed).toLowerCase() === '#7c6bff') {
+      state.settings.wallpaper = 'linen';
+      state.settings.seed = '#A97C6B';
+      state.settings.autoSeed = true;
+    }
+    state.settings.m3Palette = true;
+    await db.saveSettings(state.settings);
+  }
   if (IS_NATIVE) bootstrapNative();
   applyAppearance(state.settings);
   state.me = await db.loadProfile();
@@ -554,7 +565,13 @@ async function ensureNetwork() {
 
 function setNetwork(status, detail) {
   renderNetworkChip($id('net-chip'), status, detail);
+  const railNet = $id('rail-net');
+  if (railNet) railNet.className = `rail-net ${status === 'online' ? 'online' : status === 'connecting' ? 'connecting' : ''}`.trim();
   if (status === 'offline' || status === 'error') state.networkReady = false;
+}
+
+function setRailActive(name) {
+  $$('#rail [data-rail]').forEach((btn) => btn.classList.toggle('active', btn.dataset.rail === name));
 }
 
 function wirePeerEvents() {
@@ -1419,6 +1436,18 @@ function bindGlobalUI() {
       closeChat();
     });
   });
+  $$('#rail [data-rail]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      haptics.tap();
+      const nav = btn.dataset.rail;
+      if (nav === 'settings') { openSettings('appearance'); return; }
+      if (nav === 'new') { createInvite('dm'); return; }
+      if (nav === 'friends') { setChatFilter('dm'); closeChat(); setRailActive('friends'); return; }
+      setChatFilter('all');
+      closeChat();
+      setRailActive('chats');
+    });
+  });
 
   window.addEventListener('online', () => { setNetwork('connecting'); retryNetwork(); });
   window.addEventListener('offline', () => setNetwork('offline'));
@@ -1529,6 +1558,7 @@ function setChatFilter(filter = 'all') {
     const active = target === 'friends' ? filter === 'dm' : target === 'chats' ? filter !== 'dm' : false;
     c.classList.toggle('active', active);
   });
+  setRailActive(filter === 'dm' ? 'friends' : 'chats');
   renderSidebar();
 }
 

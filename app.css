@@ -3389,7 +3389,7 @@ html[data-theme='dark'] .qr-card { background: #fff; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 16px 34px;
+  padding: 18px 28px 34px;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.18) 65%, transparent);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
@@ -4764,9 +4764,12 @@ body { color: var(--on-surface); }
   .settings-tabs { padding: 0 4px; }
   .settings-tab { padding: 0 7px; font-size: 11.5px; letter-spacing: 0; }
   .modal { border-radius: 28px 28px 0 0; }
-  .modal-layer:has(.settings-modal) { padding: 0; place-items: start stretch; }
+  .modal-layer:has(.settings-modal) { padding: 0; place-items: stretch; }
   .modal.settings-modal {
-    width: 100% !important;
+    position: fixed !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    width: 100vw !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
@@ -4780,5 +4783,170 @@ body { color: var(--on-surface); }
 @media (max-width: 380px) {
   .mobile-nav-item .icon { padding: 4px 10px; }
   .mobile-nav-item { font-size: 10px; }
+}
+
+/* ============================================================
+   1.4.1 Expressive shell: navigation rail, warm hero, larger type.
+   A visible step beyond the flat 1.4.0 pass, still role-driven.
+   ============================================================ */
+.rail { display: none; }
+
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: 92px var(--sidebar-w) minmax(0, 1fr);
+    gap: 0;
+  }
+  .rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 8px 14px;
+    background: var(--surface-container-low);
+    border-right: 1px solid var(--outline-variant);
+    min-height: 0;
+  }
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 16px 0;
+  }
+  .sidebar-brand > img,
+  .sidebar-brand .brand-text { display: none; }
+  .sidebar-brand #btn-settings { margin-left: auto; }
+  .sidebar { padding-top: 0; }
+}
+
+html.native .rail { padding-top: calc(18px + env(safe-area-inset-top)); }
+
+.rail-logo {
+  width: 56px; height: 56px; border: 0; padding: 0; border-radius: 18px;
+  background: transparent; display: grid; place-items: center; cursor: pointer;
+  margin-bottom: 10px;
+}
+.rail-logo img { width: 44px; height: 44px; border-radius: 14px; display: block; }
+.rail-logo:active { transform: scale(.95); }
+.rail-nav { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: center; }
+.rail-btn {
+  width: 64px; min-height: 60px; border: 0; background: transparent; color: var(--on-surface-variant);
+  border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; cursor: pointer; font: inherit; font-size: 10.5px; line-height: 1; padding: 6px 2px;
+  transition: background .18s var(--ease-emphasized), color .18s var(--ease-emphasized), transform .18s var(--ease-spring);
+}
+.rail-btn .icon { font-size: 24px; }
+.rail-btn:hover { background: color-mix(in srgb, var(--on-surface) 6%, transparent); }
+.rail-btn.active { background: var(--secondary-container); color: var(--on-secondary-container); }
+.rail-btn:active { transform: scale(.94); }
+.rail-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rail-net {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--outline);
+  box-shadow: 0 0 0 5px var(--surface-container-low);
+}
+.rail-net.online { background: #3f9b63; }
+.rail-net.connecting { background: var(--tertiary); }
+
+html[data-theme="dark"] .rail-logo img { box-shadow: 0 0 0 1px var(--outline-variant); }
+
+/* Hero: make the empty state a real expressive landing panel. */
+@media (min-width: 1100px) {
+  .empty-state { padding: 40px clamp(28px, 5vw, 72px); }
+  .empty-card {
+    width: min(900px, 100%);
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas:
+      "title visual"
+      "copy visual"
+      "actions visual"
+      "facts facts";
+    column-gap: 36px;
+    row-gap: 14px;
+    align-items: start;
+    padding: 40px 44px;
+    border-radius: 36px;
+    background: var(--surface-container-low);
+    box-shadow: none;
+    text-align: left;
+  }
+  .empty-mark {
+    grid-area: visual;
+    width: 100%; height: 260px; margin: 0;
+    display: grid; place-items: center;
+    border-radius: 28px;
+    background: var(--primary-container);
+  }
+  .empty-mark img { width: 152px; height: 152px; border-radius: 34px; box-shadow: none; }
+  .empty-card h2 {
+    grid-area: title;
+    font-size: clamp(34px, 3.4vw, 48px);
+    line-height: 1.08;
+    letter-spacing: -1.4px;
+    text-align: left;
+    margin: 4px 0 0;
+    color: var(--on-surface);
+  }
+  .empty-card > p {
+    grid-area: copy;
+    text-align: left;
+    max-width: 48ch;
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+  .empty-actions { grid-area: actions; justify-content: flex-start; margin-top: 4px; }
+  .empty-facts { grid-area: facts; margin-top: 18px; justify-content: flex-start; gap: 28px; }
+  .empty-glow { display: none; }
+  .empty-tips { max-width: 900px; justify-content: flex-start; }
+}
+
+@media (max-width: 1099px) {
+  .empty-mark { width: 96px; height: 96px; background: var(--primary-container); border-radius: 28px; display: grid; place-items: center; }
+  .empty-mark img { width: 72px; height: 72px; border-radius: 20px; }
+}
+
+/* Segmented buttons follow M3 selected state, not a white pill. */
+.segmented { background: var(--surface-container-highest); border: 0; padding: 4px; gap: 2px; }
+.seg-btn { border-radius: 999px; color: var(--on-surface-variant); background: transparent; }
+.segmented .seg-btn.active { background: var(--secondary-container); color: var(--on-secondary-container); box-shadow: none; }
+
+/* Larger type in the list and app bar. */
+.chat-title, .chat-header h2 { font-size: 18px; letter-spacing: -.25px; }
+.chat-row { min-height: 68px; }
+.chat-row-name { font-size: 14.5px; }
+.chat-row-preview { font-size: 12.5px; }
+.filters { gap: 8px; padding: 2px 16px 10px; }
+
+/* Settings groups get a leading tonal icon tile. */
+.settings-block { position: relative; padding-left: 58px; }
+.settings-panel[data-panel] .settings-block { padding-left: 58px; }
+.settings-block::before {
+  content: 'palette';
+  position: absolute; left: 14px; top: 14px;
+  width: 30px; height: 30px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--primary-container); color: var(--on-primary-container);
+  font-family: 'Material Symbols Rounded'; font-size: 18px; font-weight: normal;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+}
+.settings-panel[data-panel="appearance"] .settings-block:nth-child(1)::before { content: 'palette'; }
+.settings-panel[data-panel="appearance"] .settings-block:nth-child(2)::before { content: 'wallpaper'; }
+.settings-panel[data-panel="appearance"] .settings-block:nth-child(3)::before { content: 'settings'; }
+.settings-panel[data-panel="profile"] .settings-block:nth-child(1)::before { content: 'fingerprint'; }
+.settings-panel[data-panel="profile"] .settings-block:nth-child(2)::before { content: 'fingerprint'; }
+.settings-panel[data-panel="notify"] .settings-block::before { content: 'notifications'; }
+.settings-panel[data-panel="general"] .settings-block::before { content: 'settings'; }
+.settings-panel[data-panel="network"] .settings-block::before { content: 'lan'; }
+.settings-panel[data-panel="data"] .settings-block::before { content: 'storage'; }
+.settings-panel[data-panel="about"] .settings-block::before { content: 'info'; }
+.settings-modal .settings-block { border-radius: 20px; }
+.settings-tabs { padding-inline: 18px; }
+
+@media (max-width: 680px) {
+  .settings-block { padding-left: 52px; }
+  .settings-panel[data-panel] .settings-block { padding-left: 52px; }
+  .settings-block::before { left: 12px; top: 12px; width: 28px; height: 28px; font-size: 17px; }
 }
 

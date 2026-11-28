@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Monet Chat — 点对点，莫奈色</title>
   <meta name="description" content="Monet Chat 是一个以 P2P 直连和端到端加密为核心的即时聊天应用，全平台可用，支持 Material You 莫奈取色。" />
-  <meta name="theme-color" content="#FEF7FF" />
+  <meta name="theme-color" content="#F5EFE6" />
   <meta name="color-scheme" content="light dark" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -115,6 +115,29 @@
 
   <!-- ============================== shell =============================== -->
   <div id="shell" class="shell hidden">
+    <aside id="rail" class="rail" aria-label="主导航">
+      <button class="rail-logo" data-rail="home" aria-label="Monet Chat 首页">
+        <img src="assets/icon-192.png" alt="" width="44" height="44" />
+      </button>
+      <nav class="rail-nav">
+        <button class="rail-btn active" data-rail="chats" aria-label="会话">
+          <span class="icon">chat_bubble</span><span>会话</span>
+        </button>
+        <button class="rail-btn" data-rail="friends" aria-label="朋友">
+          <span class="icon">group_add</span><span>朋友</span>
+        </button>
+        <button class="rail-btn" data-rail="new" aria-label="邀请">
+          <span class="icon">add_comment</span><span>邀请</span>
+        </button>
+      </nav>
+      <div class="rail-bottom">
+        <span id="rail-net" class="rail-net" title="连接状态"></span>
+        <button class="rail-btn" data-rail="settings" aria-label="设置">
+          <span class="icon">settings</span><span>设置</span>
+        </button>
+      </div>
+    </aside>
+
     <aside id="sidebar" class="sidebar" aria-label="会话列表">
       <header class="sidebar-brand">
         <img src="assets/icon-192.png" alt="" width="34" height="34" />

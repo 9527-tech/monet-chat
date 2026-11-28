@@ -1,10 +1,10 @@
-{
+﻿{
   "appId": "com.monet.chat",
   "appName": "Monet Chat",
   "webDir": "www",
   "android": {
     "allowMixedContent": true,
-    "backgroundColor": "#FEF7FF"
+    "backgroundColor": "#F5EFE6"
   },
   "server": {
     "androidScheme": "http",
@@ -15,7 +15,7 @@
       "launchShowDuration": 350,
       "launchAutoHide": true,
       "launchFadeOutDuration": 180,
-      "backgroundColor": "#FEF7FF",
+      "backgroundColor": "#F5EFE6",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false
     },
@@ -29,3 +29,4 @@
     }
   }
 }
+
