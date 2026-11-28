@@ -79,14 +79,14 @@ function imageMarkup(msg, urlFor) {
   }
   return `<button class="image-attachment" data-act="image" type="button">
     <img src="${escapeHTML(url)}" alt="${escapeHTML(msg.meta?.name || '图片')}" loading="lazy" draggable="false" />
-    ${msg.transfer && !msg.blob && msg.transfer.received < msg.transfer.total ? `<span class="image-meta">${Math.round((msg.transfer.received / Math.max(1, msg.transfer.total)) * 100)}%</span>` : ''}
+    ${msg.transfer && !msg.blob && msg.status !== 'sent' && msg.transfer.received < msg.transfer.total ? `<span class="image-meta">${Math.round((msg.transfer.received / Math.max(1, msg.transfer.total)) * 100)}%</span>` : ''}
   </button>`;
 }
 
 function fileMarkup(msg, out) {
   const meta = msg.meta || {};
   const pct = msg.transfer ? Math.round((msg.transfer.received / Math.max(1, msg.transfer.total)) * 100) : 100;
-  const active = msg.transfer && msg.transfer.received < msg.transfer.total;
+  const active = msg.transfer && !msg.blob && msg.status !== 'sent' && msg.transfer.received < msg.transfer.total;
   const needsAccept = !out && meta.requiresAccept && !msg.accepted && !msg.blob;
   const waiting = out && meta.requiresAccept && !msg.accepted && !msg.transfer;
   const hint = needsAccept ? '点击接收' : waiting ? '等待对方接收' : active ? `${pct}%` : '';
