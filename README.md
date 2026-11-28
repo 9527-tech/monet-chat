@@ -31,7 +31,7 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 | --- | --- |
 | Android | [`MonetChat-1.4.1.apk`](release/MonetChat-1.4.1.apk) |
 | Windows 安装版 | [`MonetChat-Setup-1.4.1.exe`](release/MonetChat-Setup-1.4.1.exe) |
-| Windows 便携版 | [`MonetChat-Portable-1.4.1.exe`](release/MonetChat-Portable-1.4.1.exe) |
+| Windows 便携版 | [`MonetChat-1.4.1-win64-portable.zip`](release/MonetChat-1.4.1-win64-portable.zip) |
 | Linux x64 | [`MonetChat-1.4.1-linux-x64.tar.gz`](release/MonetChat-1.4.1-linux-x64.tar.gz) |
 
 Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍要运行」。Android 覆盖安装会保留本地数据，不会清空聊天记录。
