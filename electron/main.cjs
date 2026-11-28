@@ -7,6 +7,7 @@ const https = require('node:https');
 const net = require('node:net');
 const fs = require('node:fs');
 const path = require('node:path');
+const { downloadFile } = require('./download.cjs');
 
 const APP_ID = 'com.monet.chat';
 let serverProcess = null;
@@ -141,33 +142,6 @@ function localJson(pathname) {
   });
 }
 
-function downloadFile(url, dest, redirects = 0) {
-  return new Promise((resolve, reject) => {
-    if (redirects > 5) { reject(new Error('下载重定向过多')); return; }
-    let parsed;
-    try { parsed = new URL(url); } catch { reject(new Error('下载地址无效')); return; }
-    if (parsed.protocol !== 'https:') { reject(new Error('更新地址必须是 HTTPS')); return; }
-    const req = https.get(parsed, { timeout: 30000, headers: { 'user-agent': 'monet-chat-updater/1.0' } }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        res.resume();
-        downloadFile(new URL(res.headers.location, url).toString(), dest, redirects + 1).then(resolve, reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        res.resume();
-        reject(new Error(`下载失败 HTTP ${res.statusCode}`));
-        return;
-      }
-      const out = fs.createWriteStream(dest);
-      res.pipe(out);
-      out.on('finish', () => out.close(() => resolve(dest)));
-      out.on('error', reject);
-    });
-    req.on('timeout', () => { req.destroy(); reject(new Error('下载超时')); });
-    req.on('error', reject);
-  });
-}
-
 ipcMain.handle('update:check', async () => {
   try {
     return await localJson('/api/update?platform=win');
@@ -176,18 +150,93 @@ ipcMain.handle('update:check', async () => {
   }
 });
 
-ipcMain.handle('update:install', async (_event, url) => {
+ipcMain.handle('update:install', async (event, urls, expectedSize) => {
   try {
-    const parsed = new URL(String(url || ''));
-    if (!/(^|\.)github\.com$|(^|\.)githubusercontent\.com$/i.test(parsed.hostname)) {
-      return { ok: false, error: '更新地址不是 GitHub 域名，已拒绝' };
+    const candidates = (Array.isArray(urls) ? urls : [urls]).map((u) => String(u || '')).filter(Boolean);
+    const allowed = (raw) => {
+      try {
+        const parsed = new URL(raw);
+        const isLoopback = /^(127\.0\.0\.1|localhost)$/i.test(parsed.hostname)
+          && parsed.protocol === 'http:'
+          && parsed.pathname.startsWith('/release/');
+        const isAllowedHost = /(^|\.)github\.com$|(^|\.)githubusercontent\.com$|(^|\.)gh-proxy\.com$/i.test(parsed.hostname);
+        return (isLoopback || isAllowedHost) && /\.(exe|zip)$/i.test(parsed.pathname) ? parsed : null;
+      } catch {
+        return null;
+      }
+    };
+    const parsedList = candidates.map(allowed).filter(Boolean);
+    if (!parsedList.length) {
+      return { ok: false, error: '更新地址不在允许的下载域名内' };
     }
-    const file = path.join(app.getPath('temp'), `MonetChat-Update-${Date.now()}.exe`);
-    await downloadFile(parsed.toString(), file);
-    const child = spawn(file, ['/S'], { detached: true, stdio: 'ignore', windowsHide: false });
+
+    const size = Number(expectedSize) || 0;
+    const isZip = /\.zip$/i.test(parsedList[0].pathname);
+    const file = path.join(app.getPath('temp'), isZip ? 'MonetChat-Update.zip' : 'MonetChat-Update-installer.exe');
+    const progress = (data) => {
+      try { event.sender.send('update:progress', data); } catch {}
+    };
+    let lastError = null;
+    for (const parsed of parsedList) {
+      try {
+        await downloadFile(parsed.toString(), file, {
+          expectedSize: size,
+          onProgress: progress,
+        });
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    if (lastError) throw lastError;
+
+    if (size > 0) {
+      const actual = fs.statSync(file).size;
+      if (actual !== size) {
+        try { fs.unlinkSync(file); } catch {}
+        return { ok: false, error: `安装包大小校验失败（${actual}/${size}）` };
+      }
+    }
+
+    const installDir = path.dirname(app.getPath('exe'));
+    const stamp = Date.now();
+    const script = path.join(app.getPath('temp'), `monet-update-${stamp}.cmd`);
+    let command;
+    if (isZip) {
+      const work = path.join(app.getPath('temp'), `monet-update-${stamp}`);
+      fs.mkdirSync(work, { recursive: true });
+      command = [
+        '@echo off',
+        'timeout /t 4 /nobreak >nul',
+        `set "ZIP=${file}"`,
+        `set "WORK=${work}"`,
+        `set "DEST=${installDir}"`,
+        'taskkill /F /IM "Monet Chat.exe" >nul 2>&1',
+        'powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath $env:ZIP -DestinationPath $env:WORK -Force"',
+        'robocopy "%WORK%" "%DEST%" /E /IS /IT /R:3 /W:1 /NFL /NDL /NJH /NJS >> "%TEMP%\\monet-update.log" 2>&1',
+        'start "" "%DEST%\\Monet Chat.exe"',
+        'rmdir /s /q "%WORK%"',
+        'del "%ZIP%"',
+        'del "%~f0"',
+      ].join('\r\n');
+    } else {
+      command = [
+        '@echo off',
+        'timeout /t 3 /nobreak >nul',
+        `start "" "${file}" /S /D=${installDir}`,
+        'del "%~f0" >nul 2>&1',
+      ].join('\r\n');
+    }
+    fs.writeFileSync(script, command, 'utf8');
+    const child = spawn('cmd.exe', ['/c', script], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
     child.unref();
-    setTimeout(() => { quitting = true; app.quit(); }, 1200);
-    return { ok: true, file };
+    setTimeout(() => { quitting = true; app.quit(); }, 700);
+    return { ok: true, file, installDir, zip: isZip };
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
   }
@@ -212,7 +261,7 @@ async function createWindow(port) {
     minWidth: 900,
     minHeight: 620,
     show: false,
-    backgroundColor: '#FEF7FF',
+    backgroundColor: '#F5EFE6',
     title: 'Monet Chat',
     autoHideMenuBar: true,
     icon: path.join(rootDir(), 'assets', 'icon.ico'),

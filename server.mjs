@@ -17,7 +17,7 @@ import { EventEmitter } from 'node:events';
 import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const GITHUB_REPO = '9527-tech/monet-chat';
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -292,13 +292,17 @@ async function latestRelease() {
 
 function assetFor(release, platform) {
   const assets = release.assets || [];
+  if (platform === 'win') {
+    return assets.find((a) => /win64-portable\.zip$/i.test(a.name || ''))
+      || assets.find((a) => /Setup.*\.exe$/i.test(a.name || ''))
+      || null;
+  }
   const tests = {
-    win: /Setup.*\.exe$/i,
     android: /\.apk$/i,
     linux: /linux.*\.tar\.gz$/i,
     source: /source\.zip$/i,
   };
-  const re = tests[platform] || tests.win;
+  const re = tests[platform] || tests.android;
   return assets.find((a) => re.test(a.name || '')) || null;
 }
 
@@ -313,6 +317,7 @@ async function updateInfo(platform) {
       local = `/release/${encodeURIComponent(asset.name)}`;
     } catch {}
   }
+  const url = asset?.browser_download_url || release.html_url;
   return {
     current: APP_VERSION,
     latest,
@@ -320,7 +325,8 @@ async function updateInfo(platform) {
     platform,
     name: asset?.name || null,
     size: asset?.size || 0,
-    url: asset?.browser_download_url || release.html_url,
+    url,
+    mirror: asset?.browser_download_url ? `https://gh-proxy.com/${asset.browser_download_url}` : null,
     local,
     page: release.html_url,
     notes: String(release.body || '').slice(0, 4000),

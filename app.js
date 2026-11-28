@@ -29,7 +29,7 @@ import {
 } from './src/render.js';
 import { haptics, setHapticsEnabled } from './src/haptics.js';
 
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -2638,7 +2638,7 @@ function settingsHTML(d) {
             <button type="button" class="btn tonal" id="btn-check-update"><span class="icon">download</span>检查更新</button>
             <span id="update-state" class="settings-note">当前 ${APP_VERSION}</span>
           </div>
-          <p class="settings-note">桌面版可直接下载并覆盖安装；手机版下载 APK 后交给系统安装，不需要手动卸载旧版。</p>
+          <p class="settings-note">桌面版下载后自动替换当前目录并重启，不需要卸载或手动安装；手机版下载 APK 后交给系统安装。</p>
         </div>
       </section>
     </div>
@@ -2830,18 +2830,39 @@ function showUpdateDialog(info) {
     actions: [
       { label: '以后再说', variant: 'text' },
       {
-        label: isDesktop ? '下载并安装' : IS_NATIVE ? '下载 APK' : '打开发布页',
+        label: isDesktop ? '下载并更新' : IS_NATIVE ? '下载 APK' : '打开发布页',
         variant: 'filled',
         icon: 'download',
         keepOpen: true,
         onClick: async (close, layer) => {
           if (isDesktop) {
             const st = layer.querySelector('#update-progress');
-            if (st) st.textContent = '正在下载安装包…下载完成后应用会自动退出并安装';
-            const r = await window.monetDesktop.installUpdate(info.url);
-            if (!r.ok) {
-              if (st) st.textContent = `下载失败：${r.error || '未知错误'}`;
-              toast('更新下载失败，请改用发布页手动下载', { type: 'error' });
+            if (st) st.textContent = '正在下载安装包…支持断点续传，完成后应用会自动退出并覆盖安装';
+            const target = info.local ? `${serverBase()}${info.local}` : info.url;
+            const candidates = (info.local ? [target] : [info.mirror, target])
+              .filter((v, i, a) => v && a.indexOf(v) === i);
+            const offProgress = window.monetDesktop.onUpdateProgress?.((p) => {
+              if (!st) return;
+              const total = p.total || info.size || 0;
+              const pct = p.percent || (total ? Math.round((p.received / total) * 100) : 0);
+              st.textContent = total
+                ? `正在下载 ${pct}% · ${formatBytes(p.received)} / ${formatBytes(total)}`
+                : `正在下载 ${formatBytes(p.received)}`;
+            });
+            let lastError = '';
+            let installed = false;
+            for (let i = 0; i < candidates.length; i++) {
+              if (st && candidates.length > 1) st.textContent = `正在尝试线路 ${i + 1}/${candidates.length}…支持断点续传`;
+              const r = await window.monetDesktop.installUpdate(candidates[i], info.size);
+              if (r.ok) { installed = true; break; }
+              lastError = r.error || '未知错误';
+            }
+            offProgress?.();
+            if (!installed) {
+              if (st) st.textContent = `下载失败：${lastError}（已保留断点，可重试）`;
+              toast('更新下载失败，请重试或改用发布页手动下载', { type: 'error' });
+            } else if (st) {
+              st.textContent = '下载完成，正在启动安装程序并退出…';
             }
             return;
           }
