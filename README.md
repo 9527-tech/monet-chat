@@ -1,4 +1,4 @@
-# Monet Chat 1.4.2
+# Monet Chat 1.4.3
 
 P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用。
 
@@ -6,8 +6,8 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 
 - 仓库：<https://github.com/9527-tech/monet-chat>
 - 永久公网地址：<https://monet-chat.tailb40225.ts.net>
-- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.4.2>
-- 1.4.2 新内容：自动更新改为便携 ZIP 原地替换（断点续传、镜像、进度、大小校验，不再依赖 NSIS 静默安装）；保留 1.4.1 的暖石品牌、Android monochrome 主题图标、桌面导航栏、暖色默认主题、自适应双栏与全屏手机设置。
+- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.4.3>
+- 1.4.3 新内容：会话与朋友合并为「消息」分段页，设置改为桌面右侧面板/手机全屏，邀请收进悬浮按钮，精简桌面导航栏与手机底栏，修正设置标签跳动与内容间距。
 
 ## 功能
 
@@ -29,9 +29,9 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 
 | 平台 | 文件 |
 | --- | --- |
-| Android | [`MonetChat-1.4.2.apk`](release/MonetChat-1.4.2.apk) |
-| Windows 便携版 | [`MonetChat-1.4.2-win64-portable.zip`](release/MonetChat-1.4.2-win64-portable.zip) |
-| Linux x64 | [`MonetChat-1.4.2-linux-x64.tar.gz`](release/MonetChat-1.4.2-linux-x64.tar.gz) |
+| Android | [`MonetChat-1.4.3.apk`](release/MonetChat-1.4.3.apk) |
+| Windows 便携版 | [`MonetChat-1.4.3-win64-portable.zip`](release/MonetChat-1.4.3-win64-portable.zip) |
+| Linux x64 | [`MonetChat-1.4.3-linux-x64.tar.gz`](release/MonetChat-1.4.3-linux-x64.tar.gz) |
 
 Windows 改为免安装 ZIP：解压后直接运行 `Monet Chat.exe`，应用内更新会原地覆盖该目录，不再需要安装器/UAC。Android 覆盖安装会保留本地数据，不会清空聊天记录。
 
@@ -39,13 +39,13 @@ Windows 改为免安装 ZIP：解压后直接运行 `Monet Chat.exe`，应用内
 
 ### Windows
 
-1. 解压 `MonetChat-1.4.2-win64-portable.zip`，运行里面的 `Monet Chat.exe`。
+1. 解压 `MonetChat-1.4.3-win64-portable.zip`，运行里面的 `Monet Chat.exe`。
 2. 首次启动填写昵称，等待网络状态变成「在线」。
 3. 点「分享邀请码」，把邀请码/二维码发给朋友。
 
 ### Android
 
-1. 安装 `MonetChat-1.4.2.apk`。
+1. 安装 `MonetChat-1.4.3.apk`。
 2. 首次启动填写昵称和信令服务器地址：
    - 同一 Wi-Fi：`http://192.168.0.5:4175`
    - 公网：`https://monet-chat.tailb40225.ts.net`
@@ -54,7 +54,7 @@ Windows 改为免安装 ZIP：解压后直接运行 `Monet Chat.exe`，应用内
 ### Linux
 
 ```bash
-tar -xzf MonetChat-1.4.2-linux-x64.tar.gz
+tar -xzf MonetChat-1.4.3-linux-x64.tar.gz
 cd linux-unpacked
 chmod +x monet-chat
 ./monet-chat
