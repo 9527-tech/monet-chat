@@ -1,4 +1,4 @@
-# Monet Chat 1.4.1
+# Monet Chat 1.4.2
 
 P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用。
 
@@ -6,8 +6,8 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 
 - 仓库：<https://github.com/9527-tech/monet-chat>
 - 永久公网地址：<https://monet-chat.tailb40225.ts.net>
-- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.4.1>
-- 1.4.1 新内容：暖石品牌重绘（象牙白 / 墨黑 / 陶土橙）、Android 主题图标（含 monochrome 单色层，适配 Nothing OS 等系统）、桌面导航栏、暖色默认主题、大幅首页视觉、设置分组图标、手机底部导航、平板/桌面自适应双栏、全屏手机设置；保留二维码扫描、旧邀请码恢复、后台保活、触感反馈、单图标启动页、自动公网与自动更新。
+- 发布页：<https://github.com/9527-tech/monet-chat/releases/tag/v1.4.2>
+- 1.4.2 新内容：自动更新改为便携 ZIP 原地替换（断点续传、镜像、进度、大小校验，不再依赖 NSIS 静默安装）；保留 1.4.1 的暖石品牌、Android monochrome 主题图标、桌面导航栏、暖色默认主题、自适应双栏与全屏手机设置。
 
 ## 功能
 
@@ -21,7 +21,7 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 - **Material You**：9 张壁纸、8 种配色风格、对比度、自定义取色；深浅色随系统或手动切换。
 - **全平台**：Windows / Android / Linux 原生包；macOS、iOS 提供 Xcode 工程和构建说明。
 - **公网可达**：启动即自动建立公网入口。安装并登录 Tailscale 后得到**永久 HTTPS 地址**；否则自动退回 Cloudflare 临时地址。
-- **自动更新**：应用内检查新版本；Windows 下载后静默覆盖安装，Android 下载 APK 覆盖安装，不需要先卸载。
+- **自动更新**：应用内检查新版本；Windows 下载便携 ZIP 后原地替换并重启，Android 下载 APK 覆盖安装，不需要先卸载。
 - **后台保活**：设置 → 通用可关闭/开启。桌面端关闭窗口后缩小到托盘；Android 使用前台服务保持在线。
 - **触感反馈**：设置 → 通用可关闭/开启；按钮、切换、发送和长按消息使用系统触感。
 
@@ -29,24 +29,23 @@ P2P 优先、端到端加密、Material 3 动态取色的全平台聊天应用�
 
 | 平台 | 文件 |
 | --- | --- |
-| Android | [`MonetChat-1.4.1.apk`](release/MonetChat-1.4.1.apk) |
-| Windows 安装版 | [`MonetChat-Setup-1.4.1.exe`](release/MonetChat-Setup-1.4.1.exe) |
-| Windows 便携版 | [`MonetChat-1.4.1-win64-portable.zip`](release/MonetChat-1.4.1-win64-portable.zip) |
-| Linux x64 | [`MonetChat-1.4.1-linux-x64.tar.gz`](release/MonetChat-1.4.1-linux-x64.tar.gz) |
+| Android | [`MonetChat-1.4.2.apk`](release/MonetChat-1.4.2.apk) |
+| Windows 便携版 | [`MonetChat-1.4.2-win64-portable.zip`](release/MonetChat-1.4.2-win64-portable.zip) |
+| Linux x64 | [`MonetChat-1.4.2-linux-x64.tar.gz`](release/MonetChat-1.4.2-linux-x64.tar.gz) |
 
-Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍要运行」。Android 覆盖安装会保留本地数据，不会清空聊天记录。
+Windows 改为免安装 ZIP：解压后直接运行 `Monet Chat.exe`，应用内更新会原地覆盖该目录，不再需要安装器/UAC。Android 覆盖安装会保留本地数据，不会清空聊天记录。
 
 ## 快速开始
 
 ### Windows
 
-1. 运行 `MonetChat-Setup-1.4.1.exe`，或直接运行免安装的 Portable 版。
+1. 解压 `MonetChat-1.4.2-win64-portable.zip`，运行里面的 `Monet Chat.exe`。
 2. 首次启动填写昵称，等待网络状态变成「在线」。
 3. 点「分享邀请码」，把邀请码/二维码发给朋友。
 
 ### Android
 
-1. 安装 `MonetChat-1.4.1.apk`。
+1. 安装 `MonetChat-1.4.2.apk`。
 2. 首次启动填写昵称和信令服务器地址：
    - 同一 Wi-Fi：`http://192.168.0.5:4175`
    - 公网：`https://monet-chat.tailb40225.ts.net`
@@ -55,7 +54,7 @@ Windows 安装包未签名，SmartScreen 提示时选择「更多信息 → 仍�
 ### Linux
 
 ```bash
-tar -xzf MonetChat-1.4.1-linux-x64.tar.gz
+tar -xzf MonetChat-1.4.2-linux-x64.tar.gz
 cd linux-unpacked
 chmod +x monet-chat
 ./monet-chat
