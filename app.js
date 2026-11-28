@@ -29,7 +29,7 @@ import {
 } from './src/render.js';
 import { haptics, setHapticsEnabled } from './src/haptics.js';
 
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.4.3';
 const MAX_TEXT = 4000;
 const MAX_FILE = 200 * 1024 * 1024;
 const IMAGE_AUTO_MAX = 8 * 1024 * 1024;
@@ -71,6 +71,7 @@ const state = {
   messages: new Map(),        // chatId -> message[] (loaded window)
   activeId: null,
   filter: 'all',
+  viewMode: 'chats',
   query: '',
   presence: new Map(),        // peerId -> boolean
   onlineIds: new Set(),
@@ -897,14 +898,26 @@ async function persistChat(chat) {
 function sortedChats() {
   const q = state.query.trim().toLowerCase();
   let list = [...state.chats.values()];
-  if (state.filter === 'dm') list = list.filter((c) => c.type === 'dm');
+  if (state.viewMode === 'friends') list = list.filter((c) => c.type === 'dm');
+  else if (state.filter === 'dm') list = list.filter((c) => c.type === 'dm');
   else if (state.filter === 'group') list = list.filter((c) => c.type === 'group');
   else if (state.filter === 'unread') list = list.filter((c) => (c.unread || 0) > 0);
   if (q) list = list.filter((c) => (c.name || '').toLowerCase().includes(q));
+  if (state.viewMode === 'friends') {
+    return list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+  }
   return list.sort((a, b) => (Number(!!b.pinned) - Number(!!a.pinned)) || ((b.lastTs || 0) - (a.lastTs || 0)));
 }
 
 function renderSidebar() {
+  const friendsView = state.viewMode === 'friends';
+  document.body.classList.toggle('friends-view', friendsView);
+  $$('#list-view [data-view]').forEach((b) => {
+    const on = b.dataset.view === state.viewMode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  $id('chat-filters')?.classList.toggle('hidden', friendsView);
   if (!state.chats.size) {
     renderChatList($id('chat-list'), [], {});
   } else {
@@ -915,6 +928,12 @@ function renderSidebar() {
       presence: (id) => !!state.presence.get(id),
       typing: (id) => typingNames(id).length > 0,
     });
+    if (friendsView && !list.length) {
+      $id('chat-list').innerHTML = `<div class="list-empty"><span class="icon">group_add</span><div>还没有朋友</div><small>分享邀请码，或扫码加入一个对话</small></div>`;
+    }
+  }
+  if (friendsView && !state.chats.size) {
+    $id('chat-list').innerHTML = `<div class="list-empty"><span class="icon">group_add</span><div>还没有朋友</div><small>分享邀请码，或扫码加入一个对话</small></div>`;
   }
   let total = 0;
   for (const c of state.chats.values()) total += c.unread || 0;
@@ -1409,17 +1428,22 @@ async function clearChatMessages(chat) {
 /* global wiring                                                       */
 /* ------------------------------------------------------------------ */
 
+function openNewMenu(anchor) {
+  openMenu({
+    anchor,
+    align: 'start',
+    items: [
+      { icon: 'add_comment', label: '新对话', hint: '生成邀请码，一对一加密聊天', onClick: () => createInvite('dm') },
+      { icon: 'group_add', label: '创建群聊', hint: '最多 12 人，P2P 网状连接', onClick: () => createInvite('group') },
+    ],
+  });
+}
+
 function bindGlobalUI() {
-  $id('btn-settings')?.addEventListener('click', () => openSettings('appearance'));
-  $id('btn-new')?.addEventListener('click', (ev) => {
-    openMenu({
-      anchor: ev.currentTarget,
-      align: 'start',
-      items: [
-        { icon: 'add_comment', label: '新对话', hint: '生成邀请码，一对一加密聊天', onClick: () => createInvite('dm') },
-        { icon: 'group_add', label: '创建群聊', hint: '最多 12 人，P2P 网状连接', onClick: () => createInvite('group') },
-      ],
-    });
+  $id('btn-new')?.addEventListener('click', (ev) => openNewMenu(ev.currentTarget));
+  $id('fab-new')?.addEventListener('click', (ev) => {
+    haptics.tap();
+    openNewMenu(ev.currentTarget);
   });
   $id('btn-join')?.addEventListener('click', () => openScanJoin());
   $id('btn-empty-new')?.addEventListener('click', () => createInvite('dm'));
@@ -1430,8 +1454,6 @@ function bindGlobalUI() {
       haptics.tap();
       const nav = btn.dataset.nav;
       if (nav === 'settings') { openSettings('appearance'); return; }
-      if (nav === 'new') { createInvite('dm'); return; }
-      if (nav === 'friends') { setChatFilter('dm'); closeChat(); return; }
       setChatFilter('all');
       closeChat();
     });
@@ -1441,8 +1463,6 @@ function bindGlobalUI() {
       haptics.tap();
       const nav = btn.dataset.rail;
       if (nav === 'settings') { openSettings('appearance'); return; }
-      if (nav === 'new') { createInvite('dm'); return; }
-      if (nav === 'friends') { setChatFilter('dm'); closeChat(); setRailActive('friends'); return; }
       setChatFilter('all');
       closeChat();
       setRailActive('chats');
@@ -1552,17 +1572,33 @@ function showCryptoHelp() {
 
 function setChatFilter(filter = 'all') {
   state.filter = filter;
+  state.viewMode = 'chats';
   $$('#chat-filters .filter-chip').forEach((c) => c.classList.toggle('active', (c.dataset.filter || 'all') === filter));
-  $$('#mobile-nav [data-nav]').forEach((c) => {
-    const target = c.dataset.nav;
-    const active = target === 'friends' ? filter === 'dm' : target === 'chats' ? filter !== 'dm' : false;
-    c.classList.toggle('active', active);
-  });
-  setRailActive(filter === 'dm' ? 'friends' : 'chats');
+  $$('#mobile-nav [data-nav]').forEach((c) => c.classList.toggle('active', c.dataset.nav === 'chats'));
+  setRailActive('chats');
+  renderSidebar();
+}
+
+function setListView(view = 'chats') {
+  state.viewMode = view === 'friends' ? 'friends' : 'chats';
+  if (state.viewMode === 'friends') {
+    state.filter = 'all';
+    closeChat();
+    setRailActive('chats');
+    const search = $id('search-input');
+    if (search) { search.value = ''; search.blur(); }
+    runSearch('');
+  }
   renderSidebar();
 }
 
 function bindSidebar() {
+  $$('#list-view [data-view]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      haptics.tap();
+      setListView(btn.dataset.view);
+    });
+  });
   $$('#chat-filters .filter-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
       haptics.tap();
