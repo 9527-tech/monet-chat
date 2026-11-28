@@ -120,19 +120,13 @@
         <img src="assets/icon-192.png" alt="" width="44" height="44" />
       </button>
       <nav class="rail-nav">
-        <button class="rail-btn active" data-rail="chats" aria-label="会话">
-          <span class="icon">chat_bubble</span><span>会话</span>
-        </button>
-        <button class="rail-btn" data-rail="friends" aria-label="朋友">
-          <span class="icon">group_add</span><span>朋友</span>
-        </button>
-        <button class="rail-btn" data-rail="new" aria-label="邀请">
-          <span class="icon">add_comment</span><span>邀请</span>
+        <button class="rail-btn active" data-rail="chats" aria-label="消息">
+          <span class="icon">chat_bubble</span><span>消息</span>
         </button>
       </nav>
       <div class="rail-bottom">
         <span id="rail-net" class="rail-net" title="连接状态"></span>
-        <button class="rail-btn" data-rail="settings" aria-label="设置">
+        <button id="btn-settings" class="rail-btn" data-rail="settings" aria-label="设置">
           <span class="icon">settings</span><span>设置</span>
         </button>
       </div>
@@ -145,13 +139,17 @@
           <strong>Monet Chat</strong>
           <span id="net-chip" class="net-chip offline"><i></i><b>连接中</b></span>
         </div>
-        <button id="btn-settings" class="icon-btn" aria-label="设置" title="设置">settings</button>
       </header>
 
       <div class="sidebar-search">
         <span class="icon">search</span>
         <input id="search-input" placeholder="搜索聊天、消息" aria-label="搜索聊天和消息" autocomplete="off" />
         <kbd class="search-kbd">Ctrl K</kbd>
+      </div>
+
+      <div id="list-view" class="segmented sidebar-seg" role="tablist" aria-label="消息视图">
+        <button class="seg-btn active" data-view="chats" role="tab" aria-selected="true">会话</button>
+        <button class="seg-btn" data-view="friends" role="tab" aria-selected="false">朋友</button>
       </div>
 
       <div class="sidebar-actions">
@@ -161,7 +159,6 @@
 
       <nav id="chat-filters" class="filters" aria-label="会话筛选">
         <button class="filter-chip active" data-filter="all">全部</button>
-        <button class="filter-chip" data-filter="dm">朋友</button>
         <button class="filter-chip" data-filter="group">群聊</button>
         <button class="filter-chip" data-filter="unread">未读 <span id="unread-total" class="count hidden">0</span></button>
       </nav>
@@ -248,19 +245,16 @@
       </section>
     </main>
     <nav id="mobile-nav" class="mobile-nav" aria-label="主导航">
-      <button class="mobile-nav-item active" data-nav="chats" aria-label="会话">
-        <span class="icon">chat_bubble</span><span>会话</span>
-      </button>
-      <button class="mobile-nav-item" data-nav="friends" aria-label="朋友">
-        <span class="icon">group_add</span><span>朋友</span>
-      </button>
-      <button class="mobile-nav-item mobile-nav-new" data-nav="new" aria-label="分享邀请码">
-        <span class="icon">add_comment</span><span>邀请</span>
+      <button class="mobile-nav-item active" data-nav="chats" aria-label="消息">
+        <span class="icon">chat_bubble</span><span>消息</span>
       </button>
       <button class="mobile-nav-item" data-nav="settings" aria-label="设置">
         <span class="icon">settings</span><span>设置</span>
       </button>
     </nav>
+    <button id="fab-new" class="fab" type="button" aria-label="开始新对话">
+      <span class="icon">add_comment</span>
+    </button>
   </div>
 
   <!-- ============================ info panel ============================ -->
