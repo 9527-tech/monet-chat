@@ -121,7 +121,44 @@ async function startTailscaleFunnel() {
     remote.verified = ok;
     if (!ok) remote.warning = '稳定地址已生成，但本机 DNS 暂时无法自检；外部网络通常仍可访问';
   });
+  startRemoteMonitor();
   return { ok: true, url: state.url };
+}
+
+let remoteTimer = null;
+
+async function monitorRemote() {
+  if (remote.mode !== 'tailscale') return;
+  const exe = await findTailscale();
+  if (!exe) return;
+  const state = await tailscaleState(exe);
+  if (!state.ok) {
+    if (remote.status !== 'error') console.error('[remote] tailscale offline:', state.reason);
+    remote.status = 'error';
+    remote.verified = false;
+    remote.error = `Tailscale 未连接：${state.reason}。请打开 Tailscale 完成登录`;
+    return;
+  }
+  if (remote.status === 'error') {
+    remote.status = 'online';
+    remote.error = null;
+    remote.url = state.url;
+    remote.verified = true;
+  }
+}
+
+function startRemoteMonitor() {
+  if (remoteTimer) return;
+  remoteTimer = setInterval(() => {
+    monitorRemote().catch((e) => console.error('[remote] monitor', e));
+  }, 30000);
+  remoteTimer.unref?.();
+  monitorRemote().catch(() => {});
+}
+
+function stopRemoteMonitor() {
+  if (remoteTimer) clearInterval(remoteTimer);
+  remoteTimer = null;
 }
 
 function cloudflaredExe() {
@@ -291,6 +328,7 @@ async function updateInfo(platform) {
 }
 
 function stopRemoteTunnel() {
+  stopRemoteMonitor();
   if (remote.proc) {
     try { remote.proc.kill(); } catch {}
     remote.proc = null;
