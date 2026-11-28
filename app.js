@@ -159,8 +159,8 @@ async function refreshRemote({ announce = true } = {}) {
     const modalUrl = document.querySelector('#remote-url');
     if (modalState) {
       const label = info.status === 'online'
-        ? `${info.stable ? '永久地址' : '临时地址'} · ${info.verified === false ? '本机未自检' : '已就绪'}`
-        : info.status === 'starting' ? '正在建立公网通道…' : info.status === 'error' ? '建立失败' : '未开启';
+        ? `${info.stable ? '永久地址' : '临时地址'} · ${info.verified === false ? '地址已生成，等待验证' : '已就绪'}`
+        : info.status === 'starting' ? '正在建立公网通道…' : info.status === 'error' ? '公网通道未连接' : '未开启';
       modalState.textContent = label;
     }
     if (modalUrl) {
