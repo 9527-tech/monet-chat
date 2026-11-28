@@ -5062,3 +5062,5 @@ body.friends-view #chat-list { padding-top: 2px; }
   .messages { padding-bottom: 8px; }
 }
 .me-card { flex: none; }
+.sidebar-seg { background: var(--surface-container-low) !important; }
+.sidebar-seg .seg-btn.active { background: var(--secondary-container) !important; color: var(--on-secondary-container) !important; font-weight: 700; }
